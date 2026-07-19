@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard Monitoring Kursus Daring LKP</title>
+<meta name="description" content="Dashboard monitoring LKP peserta Platform Kursus Daring — Direktorat Kursus dan Pelatihan" />
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+<!-- Bootstrap 5 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<!-- FontAwesome -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<!-- DataTables -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.13.11/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<!-- Leaflet -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="spinnerOverlay" class="spinner-overlay">
+  <div class="spinner-border" style="color:#fff;width:3rem;height:3rem;" role="status"></div>
+</div>
+
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="mark">LK</div>
+      <div>
+        <div class="name">Kursus Daring LKP</div>
+        <div class="sub">Direktorat Kursus &amp; Pelatihan</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Menu Utama</div>
+      <a href="index.html" class="active"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+      <a href="#tableSection"><i class="fa-solid fa-table-list"></i> Data LKP</a>
+      <a href="#mapSection"><i class="fa-solid fa-map"></i> Peta Sebaran</a>
+      <a href="#chartSection"><i class="fa-solid fa-chart-column"></i> Statistik</a>
+      <div class="nav-label">Pengelolaan</div>
+      <a href="admin.html"><i class="fa-solid fa-user-shield"></i> Admin Panel</a>
+      <a href="integrasi.html"><i class="fa-solid fa-plug"></i> Integrasi Backend</a>
+      <a href="#" id="navDownload"><i class="fa-solid fa-file-arrow-down"></i> Unduh Excel</a>
+    </nav>
+    <div class="sidebar-foot">
+      Platform Kursus Daring &copy; 2026<br>
+      v1.0.0
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <!-- Navbar -->
+    <header class="navbar-top">
+      <div class="d-flex align-items-center gap-2">
+        <button class="icon-btn" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="globalSearch" type="text" placeholder="Cari nama LKP, NPSN, alamat...">
+        </div>
+      </div>
+      <div class="navbar-actions">
+        <span id="apiModeBadge" class="badge-status b-yellow d-none d-md-inline-flex"></span>
+        <button class="icon-btn" id="btnApiSettings" title="Pengaturan Koneksi"><i class="fa-solid fa-plug-circle-bolt"></i></button>
+        <button class="icon-btn" id="themeToggle" title="Ganti tema"><i class="fa-solid fa-moon"></i></button>
+        <a href="integrasi.html" class="icon-btn" title="Integrasi Backend"><i class="fa-solid fa-code"></i></a>
+        <a href="admin.html" class="btn btn-primary btn-sm"><i class="fa-solid fa-user-shield me-1"></i>Admin</a>
+      </div>
+    </header>
+
+    <div class="breadcrumb-bar">
+      <a href="index.html">Beranda</a> <span class="mx-1">/</span> <span class="current">Dashboard Monitoring</span>
+    </div>
+
+    <div class="page-wrap">
+
+      <div id="demoBanner" class="alert alert-warning d-none d-flex align-items-center gap-2 mt-3" role="alert" style="border-radius:12px;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div><strong>Mode Demo</strong> — <code>CONFIG.API_URL</code> pada <code>js/api.js</code> belum diisi, dashboard berjalan dengan data contoh (<code>data/lkp_data.json</code>). Perubahan pada Admin Panel tidak tersimpan permanen. Lihat README.md untuk menghubungkan ke Google Spreadsheet melalui Google Apps Script.</div>
+      </div>
+
+      <div class="page-head">
+        <div>
+          <h1>Dashboard Monitoring Kursus Daring LKP</h1>
+          <p>Pantau seluruh Lembaga Kursus dan Pelatihan (LKP) pengguna Platform Kursus Daring secara nasional.</p>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="stat-grid" id="statGrid"></div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <div class="filter-grid">
+          <div>
+            <label class="form-label">Provinsi</label>
+            <select id="fltProvinsi" class="form-select form-select-sm"></select>
+          </div>
+          <div>
+            <label class="form-label">Kab/Kota</label>
+            <select id="fltKabKota" class="form-select form-select-sm"></select>
+          </div>
+          <div>
+            <label class="form-label">Program Keterampilan</label>
+            <select id="fltProgram" class="form-select form-select-sm"></select>
+          </div>
+          <div>
+            <label class="form-label">Status Bimtek</label>
+            <select id="fltStatusBimtek" class="form-select form-select-sm">
+              <option value="">Semua Status</option>
+              <option value="Sudah Bimtek">Sudah Bimtek</option>
+              <option value="Belum Bimtek">Belum Bimtek</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Status Kelas</label>
+            <select id="fltStatusKelas" class="form-select form-select-sm">
+              <option value="">Semua Status</option>
+              <option value="Sudah Berjalan">Sudah Berjalan</option>
+              <option value="Materi Lengkap - Belum Ada Peserta">Materi Lengkap, Belum Ada Peserta</option>
+              <option value="Materi Belum Lengkap">Materi Belum Lengkap</option>
+              <option value="Belum Ada Kelas">Belum Ada Kelas</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Tahun Bimtek</label>
+            <select id="fltTahun" class="form-select form-select-sm"></select>
+          </div>
+          <div>
+            <label class="form-label">Min. Peserta</label>
+            <input id="fltPesertaMin" type="number" min="0" class="form-control form-control-sm" placeholder="0">
+          </div>
+          <div>
+            <label class="form-label">Min. Lulusan</label>
+            <input id="fltLulusanMin" type="number" min="0" class="form-control form-control-sm" placeholder="0">
+          </div>
+        </div>
+        <div class="filter-actions">
+          <button id="btnResetFilter" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-rotate-left me-1"></i>Reset Filter</button>
+          <button id="btnCopyLink" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-link me-1"></i>Salin Tautan Filter</button>
+          <button id="btnDownloadExcel" class="btn btn-accent btn-sm"><i class="fa-solid fa-file-excel me-1"></i>Download Excel</button>
+          <span class="ms-auto text-muted" style="font-size:.8rem;"><span id="resultCount">0</span> LKP ditemukan</span>
+        </div>
+      </div>
+
+      <!-- Map -->
+      <div class="panel" id="mapSection">
+        <div class="panel-head">
+          <h2><i class="fa-solid fa-map-location-dot me-2" style="color:var(--primary)"></i>Peta Sebaran LKP per Provinsi</h2>
+          <span class="muted">Klik provinsi untuk memfilter data</span>
+        </div>
+        <div id="mapWrap"><div id="indoMap"></div></div>
+        <div class="map-legend">
+          <span>Kepadatan LKP:</span>
+          <span><span class="swatch" style="background:#EEF1F6"></span>0</span>
+          <span><span class="swatch" style="background:#DCE8FA"></span>Rendah</span>
+          <span><span class="swatch" style="background:#7FA9E8"></span>Sedang</span>
+          <span><span class="swatch" style="background:#004AAD"></span>Tinggi</span>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div id="chartSection">
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-head"><h2>LKP per Provinsi (Top 12)</h2></div>
+            <div class="chart-box tall"><canvas id="chartProvinsi"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Kelas per Program Keterampilan</h2></div>
+            <div class="chart-box tall"><canvas id="chartProgram"></canvas></div>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="panel">
+            <div class="panel-head"><h2>Status Kelas</h2></div>
+            <div class="chart-box"><canvas id="chartStatusKelas"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Status Bimtek</h2></div>
+            <div class="chart-box"><canvas id="chartStatusBimtek"></canvas></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Peserta vs Lulusan (Top 10 Provinsi)</h2></div>
+            <div class="chart-box"><canvas id="chartPesertaLulusan"></canvas></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-head"><h2>Top 10 Provinsi</h2></div>
+            <div id="listTopProvinsi"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Top 10 Kabupaten/Kota</h2></div>
+            <div id="listTopKab"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-card" id="tableSection">
+        <div class="panel-head">
+          <h2><i class="fa-solid fa-table-list me-2" style="color:var(--primary)"></i>Data LKP</h2>
+        </div>
+        <div class="table-responsive">
+          <table id="lkpTable" class="table table-hover align-middle w-100">
+            <thead>
+              <tr>
+                <th>Nama LKP</th>
+                <th>NPSN</th>
+                <th>Provinsi</th>
+                <th>Kab/Kota</th>
+                <th>Kelas</th>
+                <th>Peserta</th>
+                <th>Lulusan</th>
+                <th>Status Bimtek</th>
+                <th>Status Kelas</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-0" id="detailBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- API Settings Modal -->
+<div class="modal fade" id="apiSettingsModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-plug-circle-bolt me-2" style="color:var(--primary)"></i>Pengaturan Koneksi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted" style="font-size:.84rem;">Tempel URL Web App Google Apps Script Anda di sini agar dashboard membaca &amp; menulis langsung ke Google Spreadsheet. Kosongkan untuk kembali ke Mode Demo (data contoh lokal).</p>
+        <label class="form-label">URL Web App Apps Script</label>
+        <input id="apiUrlInput" type="url" class="form-control mb-2" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+        <div class="d-flex gap-2 mb-2">
+          <button id="btnTestApiUrl" type="button" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-satellite-dish me-1"></i>Tes Koneksi</button>
+          <button id="btnUseDemoMode" type="button" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-hard-drive me-1"></i>Gunakan Mode Demo</button>
+        </div>
+        <div id="apiSettingsStatus" style="font-size:.82rem;min-height:1.2em;"></div>
+        <hr>
+        <p class="text-muted mb-1" style="font-size:.78rem;">Sedang di Mode Demo? Anda bisa mengembalikan data contoh ke kondisi awal:</p>
+        <button id="btnResetDemoData" type="button" class="btn btn-soft-danger btn-sm"><i class="fa-solid fa-rotate-left me-1"></i>Reset Data Demo</button>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button id="btnSaveApiUrl" type="button" class="btn btn-primary">Simpan &amp; Muat Ulang</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.13.11/js/jquery.dataTables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.13.11/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.12.4/sweetalert2.all.min.js"></script>
+
+<script src="js/common.js"></script>
+<script src="js/api.js"></script>
+<script src="js/filter.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/map.js"></script>
+<script src="js/excel.js"></script>
+<script src="js/dashboard.js"></script>
+<script>
+  document.getElementById("navDownload").addEventListener("click", (e) => {
+    e.preventDefault();
+    document.getElementById("btnDownloadExcel").click();
+  });
+</script>
+</body>
+</html>

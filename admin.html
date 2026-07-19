@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin Panel — Dashboard Kursus Daring LKP</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.13.11/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.12.4/sweetalert2.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="spinnerOverlay" class="spinner-overlay" style="display:none;">
+  <div class="spinner-border" style="color:#fff;width:3rem;height:3rem;" role="status"></div>
+</div>
+
+<!-- ===================== LOGIN SCREEN ===================== -->
+<div class="login-wrap d-none" id="loginScreen">
+  <div class="login-card">
+    <div class="text-center mb-3">
+      <div class="mx-auto mb-2" style="width:52px;height:52px;border-radius:14px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:var(--accent);font-family:var(--font-display);font-weight:800;font-size:1.3rem;">LK</div>
+      <h4>Admin Panel</h4>
+      <p class="text-muted" style="font-size:.85rem;">Kursus Daring LKP — Direktorat Kursus &amp; Pelatihan</p>
+    </div>
+    <div id="loginError" class="alert alert-danger py-2 d-none" style="font-size:.82rem;"></div>
+    <form id="loginForm">
+      <div class="mb-3">
+        <label class="form-label">Username</label>
+        <input id="loginUsername" class="form-control" placeholder="admin" required autocomplete="username">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input id="loginPassword" type="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button id="btnLogin" type="submit" class="btn btn-primary w-100">Masuk</button>
+    </form>
+    <p class="text-center text-muted mt-3 mb-0" style="font-size:.76rem;">Mode Demo → username: <code>admin</code> / password: <code>admin123</code></p>
+    <p class="text-center mt-2 mb-0"><a href="index.html" style="font-size:.8rem;"><i class="fa-solid fa-arrow-left me-1"></i>Kembali ke Dashboard</a></p>
+  </div>
+</div>
+
+<!-- ===================== ADMIN PANEL ===================== -->
+<div class="app-shell d-none" id="adminScreen">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="mark">LK</div>
+      <div>
+        <div class="name">Kursus Daring LKP</div>
+        <div class="sub">Direktorat Kursus &amp; Pelatihan</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Menu Utama</div>
+      <a href="index.html"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+      <a href="admin.html" class="active"><i class="fa-solid fa-user-shield"></i> Admin Panel</a>
+      <a href="integrasi.html"><i class="fa-solid fa-plug"></i> Integrasi Backend</a>
+    </nav>
+    <div class="sidebar-foot">Platform Kursus Daring &copy; 2026<br>v1.0.0</div>
+  </aside>
+
+  <div class="main-col">
+    <header class="navbar-top">
+      <div class="d-flex align-items-center gap-2">
+        <button class="icon-btn" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="adminSearch" type="text" placeholder="Cari LKP...">
+        </div>
+      </div>
+      <div class="navbar-actions">
+        <span id="apiModeBadge" class="badge-status b-yellow d-none d-md-inline-flex"></span>
+        <button class="icon-btn" id="btnApiSettings" title="Pengaturan Koneksi"><i class="fa-solid fa-plug-circle-bolt"></i></button>
+        <button class="icon-btn" id="themeToggle"><i class="fa-solid fa-moon"></i></button>
+        <span class="text-muted" style="font-size:.82rem;"><i class="fa-solid fa-circle-user me-1"></i><span id="adminUserLabel">Admin</span></span>
+        <button class="btn btn-outline-secondary btn-sm" id="btnLogout"><i class="fa-solid fa-right-from-bracket me-1"></i>Keluar</button>
+      </div>
+    </header>
+
+    <div class="breadcrumb-bar">
+      <a href="index.html">Beranda</a> <span class="mx-1">/</span> <span class="current">Admin Panel</span>
+    </div>
+
+    <div class="page-wrap">
+      <div id="demoBanner" class="alert alert-warning d-none d-flex align-items-center gap-2 mt-3" role="alert" style="border-radius:12px;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div><strong>Mode Demo</strong> — perubahan yang Anda buat di sini hanya tersimpan sementara di memori browser dan akan kembali seperti semula saat halaman dimuat ulang. Hubungkan <code>CONFIG.API_URL</code> di <code>js/api.js</code> ke Google Apps Script agar perubahan tersimpan permanen ke Google Spreadsheet.</div>
+      </div>
+
+      <div class="page-head">
+        <div>
+          <h1>Kelola Data LKP</h1>
+          <p>Tambah, ubah, atau hapus data LKP beserta daftar kelasnya.</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button id="btnImportExcel" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-file-import me-1"></i>Import Excel</button>
+          <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" class="d-none">
+          <button id="btnExportAdminExcel" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-file-export me-1"></i>Export Excel</button>
+          <button id="btnAddLkp" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus me-1"></i>Tambah LKP</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-responsive">
+          <table id="adminTable" class="table table-hover align-middle w-100">
+            <thead>
+              <tr>
+                <th>Nama LKP</th>
+                <th>NPSN</th>
+                <th>Provinsi</th>
+                <th>Kab/Kota</th>
+                <th>Kelas</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Form Modal -->
+<div class="modal fade" id="lkpFormModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="lkpForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="lkpFormTitle">Tambah Data LKP</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <h6 class="mb-3"><i class="fa-solid fa-building-columns me-1"></i>Identitas LKP</h6>
+          <div class="row g-3 mb-2">
+            <div class="col-md-8">
+              <label class="form-label">Nama LKP</label>
+              <input id="f_nama_lkp" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">NPSN</label>
+              <input id="f_npsn" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Provinsi</label>
+              <input id="f_provinsi" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Kabupaten/Kota</label>
+              <input id="f_kab_kota" class="form-control" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Alamat</label>
+              <textarea id="f_alamat" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Program Keterampilan</label>
+              <input id="f_program" class="form-control" placeholder="Contoh: Tata Kecantikan">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label d-block">Status Bimtek</label>
+              <div class="form-check form-check-inline mt-2">
+                <input class="form-check-input" type="checkbox" id="f_bimtek2025">
+                <label class="form-check-label" for="f_bimtek2025">2025</label>
+              </div>
+              <div class="form-check form-check-inline mt-2">
+                <input class="form-check-input" type="checkbox" id="f_bimtek2026">
+                <label class="form-check-label" for="f_bimtek2026">2026</label>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0"><i class="fa-solid fa-chalkboard-user me-1"></i>Daftar Kelas</h6>
+            <button type="button" id="btnAddKelasRow" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-plus me-1"></i>Tambah Kelas</button>
+          </div>
+          <div id="kelasRows"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" id="btnSaveLkp" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- API Settings Modal -->
+<div class="modal fade" id="apiSettingsModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-plug-circle-bolt me-2" style="color:var(--primary)"></i>Pengaturan Koneksi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted" style="font-size:.84rem;">Tempel URL Web App Google Apps Script Anda di sini agar dashboard membaca &amp; menulis langsung ke Google Spreadsheet. Kosongkan untuk kembali ke Mode Demo (data contoh lokal).</p>
+        <label class="form-label">URL Web App Apps Script</label>
+        <input id="apiUrlInput" type="url" class="form-control mb-2" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+        <div class="d-flex gap-2 mb-2">
+          <button id="btnTestApiUrl" type="button" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-satellite-dish me-1"></i>Tes Koneksi</button>
+          <button id="btnUseDemoMode" type="button" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-hard-drive me-1"></i>Gunakan Mode Demo</button>
+        </div>
+        <div id="apiSettingsStatus" style="font-size:.82rem;min-height:1.2em;"></div>
+        <hr>
+        <p class="text-muted mb-1" style="font-size:.78rem;">Sedang di Mode Demo? Anda bisa mengembalikan data contoh ke kondisi awal:</p>
+        <button id="btnResetDemoData" type="button" class="btn btn-soft-danger btn-sm"><i class="fa-solid fa-rotate-left me-1"></i>Reset Data Demo</button>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button id="btnSaveApiUrl" type="button" class="btn btn-primary">Simpan &amp; Muat Ulang</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.13.11/js/jquery.dataTables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.13.11/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.12.4/sweetalert2.all.min.js"></script>
+
+<script src="js/common.js"></script>
+<script src="js/api.js"></script>
+<script src="js/filter.js"></script>
+<script src="js/excel.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

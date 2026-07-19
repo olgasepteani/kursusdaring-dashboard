@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Integrasi Backend — Dashboard Kursus Daring LKP</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+<style>
+  #codeGsBlock{ background:#0B1220; color:#EAF0FB; padding:1.1rem 1.2rem; border-radius:12px; font-family:var(--font-mono); font-size:.76rem; line-height:1.6; max-height:520px; overflow:auto; white-space:pre; }
+  .step-card{ display:flex; gap:.9rem; }
+  .step-num{ width:30px; height:30px; border-radius:50%; background:var(--primary-light); color:var(--primary); font-weight:700; display:flex; align-items:center; justify-content:center; flex:none; font-family:var(--font-display); }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="mark">LK</div>
+      <div>
+        <div class="name">Kursus Daring LKP</div>
+        <div class="sub">Direktorat Kursus &amp; Pelatihan</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Menu Utama</div>
+      <a href="index.html"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+      <a href="admin.html"><i class="fa-solid fa-user-shield"></i> Admin Panel</a>
+      <a href="integrasi.html" class="active"><i class="fa-solid fa-plug"></i> Integrasi Backend</a>
+    </nav>
+    <div class="sidebar-foot">Platform Kursus Daring &copy; 2026<br>v1.0.0</div>
+  </aside>
+
+  <div class="main-col">
+    <header class="navbar-top">
+      <div class="d-flex align-items-center gap-2">
+        <button class="icon-btn" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
+        <h5 class="mb-0">Integrasi Backend</h5>
+      </div>
+      <div class="navbar-actions">
+        <span id="apiModeBadge" class="badge-status b-yellow"></span>
+        <button class="icon-btn" id="btnApiSettings" title="Pengaturan Koneksi"><i class="fa-solid fa-plug-circle-bolt"></i></button>
+        <button class="icon-btn" id="themeToggle"><i class="fa-solid fa-moon"></i></button>
+      </div>
+    </header>
+
+    <div class="breadcrumb-bar">
+      <a href="index.html">Beranda</a> <span class="mx-1">/</span> <span class="current">Integrasi Backend</span>
+    </div>
+
+    <div class="page-wrap">
+      <div class="page-head">
+        <div>
+          <h1>Hubungkan ke Google Spreadsheet</h1>
+          <p>Ikuti langkah berikut agar dashboard membaca &amp; menulis data secara permanen, lalu tempel URL Apps Script Anda lewat tombol <i class="fa-solid fa-plug-circle-bolt"></i> di navbar.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Langkah Setup</h2></div>
+        <div class="d-flex flex-column gap-3">
+          <div class="step-card">
+            <div class="step-num">1</div>
+            <div><strong>Buat Google Spreadsheet baru</strong><div class="text-muted" style="font-size:.83rem;">Buka <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a>, lalu buka menu <code>Extensions &gt; Apps Script</code>.</div></div>
+          </div>
+          <div class="step-card">
+            <div class="step-num">2</div>
+            <div><strong>Tempel kode di bawah ini</strong> ke <code>Code.gs</code>, lalu simpan project.</div>
+          </div>
+          <div class="step-card">
+            <div class="step-num">3</div>
+            <div><strong>Jalankan fungsi <code>setupSpreadsheet</code></strong> sekali dari editor Apps Script (pilih dari dropdown fungsi, klik Run, izinkan akses) untuk membuat tab <code>LKP</code>, <code>Kelas</code>, <code>Log</code>, <code>Referensi</code> beserta akun admin default.</div>
+          </div>
+          <div class="step-card">
+            <div class="step-num">4</div>
+            <div><strong>Impor data awal</strong> — di tab <code>LKP</code>, gunakan <code>File &gt; Import &gt; Upload</code>, pilih <code>data/seed_LKP.csv</code> (opsi "Replace current sheet"). Ulangi untuk <code>seed_Kelas.csv</code> ke tab <code>Kelas</code> dan <code>seed_Referensi.csv</code> ke tab <code>Referensi</code>.</div>
+          </div>
+          <div class="step-card">
+            <div class="step-num">5</div>
+            <div><strong>Deploy sebagai Web App</strong> — <code>Deploy &gt; New deployment &gt; Web app</code>, Execute as: <em>Me</em>, Who has access: <em>Anyone</em>. Salin URL yang muncul.</div>
+          </div>
+          <div class="step-card">
+            <div class="step-num">6</div>
+            <div><strong>Tempel URL tersebut</strong> lewat tombol <i class="fa-solid fa-plug-circle-bolt"></i> Pengaturan Koneksi di navbar dashboard ini, klik "Tes Koneksi", lalu "Simpan &amp; Muat Ulang".</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2><i class="fa-solid fa-file-code me-2" style="color:var(--primary)"></i>apps-script/Code.gs</h2>
+          <button id="btnCopyCode" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-copy me-1"></i>Salin Kode</button>
+        </div>
+        <pre id="codeGsBlock">
+/**
+ * ============================================================================
+ * Code.gs — Backend REST API untuk Dashboard Monitoring Kursus Daring LKP
+ * ============================================================================
+ * Deploy sebagai Web App:
+ *   Deploy &gt; New deployment &gt; Type: Web app
+ *   Execute as: Me
+ *   Who has access: Anyone
+ *
+ * Struktur Google Spreadsheet (dibuat otomatis oleh fungsi setupSpreadsheet
+ * jika sheet belum ada — jalankan sekali dari editor Apps Script):
+ *
+ *   Sheet &quot;LKP&quot;
+ *     id | npsn | nama_lkp | alamat | provinsi | kab_kota | program_keterampilan
+ *     | status_bimtek | tahun_bimtek | catatan | created_at | updated_at
+ *
+ *   Sheet &quot;Kelas&quot;
+ *     id | lkp_id | nama_kelas | link | peserta | lulusan | status
+ *
+ *   Sheet &quot;Log&quot;
+ *     timestamp | username | action | detail
+ *
+ *   Sheet &quot;Referensi&quot;
+ *     tipe | nilai            (tipe = &quot;provinsi&quot; | &quot;program&quot;)
+ * ============================================================================
+ */
+
+const SHEET_LKP = &quot;LKP&quot;;
+const SHEET_KELAS = &quot;Kelas&quot;;
+const SHEET_LOG = &quot;Log&quot;;
+const SHEET_REF = &quot;Referensi&quot;;
+
+/* ---------------------------------------------------------------------- */
+function getSS() {
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function getOrCreateSheet(name, headers) {
+  const ss = getSS();
+  let sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.appendRow(headers);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/** Jalankan sekali secara manual dari editor Apps Script untuk inisialisasi sheet */
+function setupSpreadsheet() {
+  getOrCreateSheet(SHEET_LKP, [&quot;id&quot;, &quot;npsn&quot;, &quot;nama_lkp&quot;, &quot;alamat&quot;, &quot;provinsi&quot;, &quot;kab_kota&quot;, &quot;program_keterampilan&quot;, &quot;status_bimtek&quot;, &quot;tahun_bimtek&quot;, &quot;catatan&quot;, &quot;created_at&quot;, &quot;updated_at&quot;]);
+  getOrCreateSheet(SHEET_KELAS, [&quot;id&quot;, &quot;lkp_id&quot;, &quot;nama_kelas&quot;, &quot;link&quot;, &quot;peserta&quot;, &quot;lulusan&quot;, &quot;status&quot;]);
+  getOrCreateSheet(SHEET_LOG, [&quot;timestamp&quot;, &quot;username&quot;, &quot;action&quot;, &quot;detail&quot;]);
+  getOrCreateSheet(SHEET_REF, [&quot;tipe&quot;, &quot;nilai&quot;]);
+  const props = PropertiesService.getScriptProperties();
+  if (!props.getProperty(&quot;ADMIN_USERNAME&quot;)) props.setProperty(&quot;ADMIN_USERNAME&quot;, &quot;admin&quot;);
+  if (!props.getProperty(&quot;ADMIN_PASSWORD&quot;)) props.setProperty(&quot;ADMIN_PASSWORD&quot;, &quot;admin123&quot;);
+}
+
+/**
+ * Import awal dari data/lkp_data.json (jalankan sekali secara manual setelah
+ * setupSpreadsheet, dengan isi variabel SEED di bawah — lihat README.md
+ * bagian &quot;Import data awal&quot; untuk cara menghasilkan potongan JSON per-batch).
+ */
+function importSeedFromJson(jsonText) {
+  const records = JSON.parse(jsonText);
+  const lkpSheet = getOrCreateSheet(SHEET_LKP, []);
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const now = new Date().toISOString();
+  const lkpRows = [];
+  const kelasRows = [];
+  records.forEach((r) =&gt; {
+    lkpRows.push([r.id, r.npsn, r.nama_lkp, r.alamat, r.provinsi, r.kab_kota, r.program_keterampilan, r.status_bimtek, (r.tahun_bimtek || []).join(&quot;,&quot;), r.catatan || &quot;&quot;, now, now]);
+    (r.kelas || []).forEach((k) =&gt; {
+      kelasRows.push([k.id, r.id, k.nama_kelas, k.link, k.peserta, k.lulusan, k.status]);
+    });
+  });
+  if (lkpRows.length) lkpSheet.getRange(lkpSheet.getLastRow() + 1, 1, lkpRows.length, lkpRows[0].length).setValues(lkpRows);
+  if (kelasRows.length) kelasSheet.getRange(kelasSheet.getLastRow() + 1, 1, kelasRows.length, kelasRows[0].length).setValues(kelasRows);
+}
+
+/* ---------------------------------------------------------------------- */
+function sheetToObjects(sh) {
+  const values = sh.getDataRange().getValues();
+  if (values.length &lt; 2) return [];
+  const headers = values[0];
+  return values.slice(1).map((row) =&gt; {
+    const obj = {};
+    headers.forEach((h, i) =&gt; (obj[h] = row[i]));
+    return obj;
+  });
+}
+
+function findRowIndexById(sh, id, idCol) {
+  idCol = idCol || &quot;id&quot;;
+  const values = sh.getDataRange().getValues();
+  const headers = values[0];
+  const col = headers.indexOf(idCol);
+  for (let i = 1; i &lt; values.length; i++) {
+    if (String(values[i][col]) === String(id)) return i + 1; // 1-based row number
+  }
+  return -1;
+}
+
+function uid(prefix) {
+  return prefix + &quot;-&quot; + Utilities.getUuid().slice(0, 8);
+}
+
+function logAction(username, action, detail) {
+  const sh = getOrCreateSheet(SHEET_LOG, [&quot;timestamp&quot;, &quot;username&quot;, &quot;action&quot;, &quot;detail&quot;]);
+  sh.appendRow([new Date().toISOString(), username || &quot;-&quot;, action, JSON.stringify(detail || {})]);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Auth sederhana berbasis token di CacheService (berlaku 6 jam)          */
+/* ---------------------------------------------------------------------- */
+function login(username, password) {
+  const props = PropertiesService.getScriptProperties();
+  const validUser = props.getProperty(&quot;ADMIN_USERNAME&quot;) || &quot;admin&quot;;
+  const validPass = props.getProperty(&quot;ADMIN_PASSWORD&quot;) || &quot;admin123&quot;;
+  if (username !== validUser || password !== validPass) {
+    throw new Error(&quot;Username atau password salah&quot;);
+  }
+  const token = Utilities.getUuid();
+  CacheService.getScriptCache().put(&quot;token_&quot; + token, username, 6 * 60 * 60);
+  logAction(username, &quot;login&quot;, {});
+  return { token, username };
+}
+
+function requireAuth(token) {
+  if (!token) throw new Error(&quot;Tidak terautentikasi. Silakan login kembali.&quot;);
+  const username = CacheService.getScriptCache().get(&quot;token_&quot; + token);
+  if (!username) throw new Error(&quot;Sesi telah berakhir. Silakan login kembali.&quot;);
+  return username;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Perakit objek LKP lengkap dengan kelas anak                            */
+/* ---------------------------------------------------------------------- */
+function buildLkpObjects() {
+  const lkpSheet = getOrCreateSheet(SHEET_LKP, []);
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const lkpRows = sheetToObjects(lkpSheet);
+  const kelasRows = sheetToObjects(kelasSheet);
+
+  const kelasByLkp = {};
+  kelasRows.forEach((k) =&gt; {
+    if (!kelasByLkp[k.lkp_id]) kelasByLkp[k.lkp_id] = [];
+    kelasByLkp[k.lkp_id].push({
+      id: k.id,
+      nama_kelas: k.nama_kelas,
+      link: k.link,
+      peserta: Number(k.peserta) || 0,
+      lulusan: Number(k.lulusan) || 0,
+      status: k.status,
+    });
+  });
+
+  return lkpRows.map((r) =&gt; {
+    const kelas = kelasByLkp[r.id] || [];
+    return {
+      id: r.id,
+      npsn: r.npsn,
+      nama_lkp: r.nama_lkp,
+      alamat: r.alamat,
+      provinsi: r.provinsi,
+      kab_kota: r.kab_kota,
+      program_keterampilan: r.program_keterampilan,
+      status_bimtek: r.status_bimtek,
+      tahun_bimtek: String(r.tahun_bimtek || &quot;&quot;).split(&quot;,&quot;).filter(Boolean).map(Number),
+      catatan: r.catatan,
+      kelas: kelas,
+      jumlah_kelas: kelas.length,
+      jumlah_peserta: kelas.reduce((s, k) =&gt; s + k.peserta, 0),
+      jumlah_lulusan: kelas.reduce((s, k) =&gt; s + k.lulusan, 0),
+    };
+  });
+}
+
+/* ==========================================================================
+   doGet — endpoint baca (listLkp, getLkp, getReferensi)
+   ========================================================================== */
+function doGet(e) {
+  try {
+    const action = e.parameter.action;
+    let data;
+    if (action === &quot;listLkp&quot;) {
+      data = buildLkpObjects();
+    } else if (action === &quot;getLkp&quot;) {
+      data = buildLkpObjects().find((d) =&gt; d.id === e.parameter.id) || null;
+    } else if (action === &quot;getReferensi&quot;) {
+      const all = buildLkpObjects();
+      data = {
+        provinsi: [...new Set(all.map((d) =&gt; d.provinsi))].filter(Boolean).sort(),
+        program: [...new Set(all.map((d) =&gt; d.program_keterampilan))].filter(Boolean).sort(),
+      };
+    } else {
+      throw new Error(&quot;Aksi tidak dikenal: &quot; + action);
+    }
+    return jsonResponse({ ok: true, data });
+  } catch (err) {
+    return jsonResponse({ ok: false, message: err.message });
+  }
+}
+
+/* ==========================================================================
+   doPost — endpoint tulis (login, create/update/delete LKP &amp; Kelas, import)
+   ========================================================================== */
+function doPost(e) {
+  try {
+    const body = JSON.parse(e.postData.contents);
+    const action = body.action;
+    const payload = body.payload || {};
+    let data;
+
+    if (action === &quot;login&quot;) {
+      data = login(payload.username, payload.password);
+      return jsonResponse({ ok: true, data });
+    }
+
+    // Semua aksi selain login memerlukan token valid
+    const username = requireAuth(body.token);
+
+    if (action === &quot;createLkp&quot;) {
+      data = createLkp(payload, username);
+    } else if (action === &quot;updateLkp&quot;) {
+      data = updateLkp(payload, username);
+    } else if (action === &quot;deleteLkp&quot;) {
+      data = deleteLkp(payload, username);
+    } else if (action === &quot;createKelas&quot;) {
+      data = createKelas(payload, username);
+    } else if (action === &quot;updateKelas&quot;) {
+      data = updateKelas(payload, username);
+    } else if (action === &quot;deleteKelas&quot;) {
+      data = deleteKelas(payload, username);
+    } else if (action === &quot;importBulk&quot;) {
+      data = importBulk(payload, username);
+    } else {
+      throw new Error(&quot;Aksi tidak dikenal: &quot; + action);
+    }
+    return jsonResponse({ ok: true, data });
+  } catch (err) {
+    return jsonResponse({ ok: false, message: err.message });
+  }
+}
+
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ==========================================================================
+   CRUD LKP
+   ========================================================================== */
+function createLkp(payload, username) {
+  const sh = getOrCreateSheet(SHEET_LKP, []);
+  const id = uid(&quot;LKP&quot;);
+  const now = new Date().toISOString();
+  sh.appendRow([id, payload.npsn || &quot;&quot;, payload.nama_lkp || &quot;&quot;, payload.alamat || &quot;&quot;, payload.provinsi || &quot;&quot;, payload.kab_kota || &quot;&quot;, payload.program_keterampilan || &quot;&quot;, payload.status_bimtek || &quot;Belum Bimtek&quot;, (payload.tahun_bimtek || []).join(&quot;,&quot;), payload.catatan || &quot;&quot;, now, now]);
+
+  if (Array.isArray(payload.kelas) &amp;&amp; payload.kelas.length) {
+    const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+    payload.kelas.forEach((k) =&gt; {
+      kelasSheet.appendRow([uid(&quot;K&quot;), id, k.nama_kelas, k.link || &quot;&quot;, k.peserta || 0, k.lulusan || 0, k.status || &quot;Materi Belum Lengkap&quot;]);
+    });
+  }
+  logAction(username, &quot;createLkp&quot;, { id, nama_lkp: payload.nama_lkp });
+  return buildLkpObjects().find((d) =&gt; d.id === id);
+}
+
+function updateLkp(payload, username) {
+  const sh = getOrCreateSheet(SHEET_LKP, []);
+  const row = findRowIndexById(sh, payload.id);
+  if (row === -1) throw new Error(&quot;Data LKP tidak ditemukan&quot;);
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const setCell = (col, val) =&gt; sh.getRange(row, headers.indexOf(col) + 1).setValue(val);
+
+  if (payload.npsn !== undefined) setCell(&quot;npsn&quot;, payload.npsn);
+  if (payload.nama_lkp !== undefined) setCell(&quot;nama_lkp&quot;, payload.nama_lkp);
+  if (payload.alamat !== undefined) setCell(&quot;alamat&quot;, payload.alamat);
+  if (payload.provinsi !== undefined) setCell(&quot;provinsi&quot;, payload.provinsi);
+  if (payload.kab_kota !== undefined) setCell(&quot;kab_kota&quot;, payload.kab_kota);
+  if (payload.program_keterampilan !== undefined) setCell(&quot;program_keterampilan&quot;, payload.program_keterampilan);
+  if (payload.status_bimtek !== undefined) setCell(&quot;status_bimtek&quot;, payload.status_bimtek);
+  if (payload.tahun_bimtek !== undefined) setCell(&quot;tahun_bimtek&quot;, (payload.tahun_bimtek || []).join(&quot;,&quot;));
+  if (payload.catatan !== undefined) setCell(&quot;catatan&quot;, payload.catatan);
+  setCell(&quot;updated_at&quot;, new Date().toISOString());
+
+  // Ganti seluruh daftar kelas jika dikirim (pendekatan replace-all, sederhana &amp; konsisten)
+  if (Array.isArray(payload.kelas)) {
+    const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+    const values = kelasSheet.getDataRange().getValues();
+    for (let i = values.length - 1; i &gt;= 1; i--) {
+      if (String(values[i][1]) === String(payload.id)) kelasSheet.deleteRow(i + 1);
+    }
+    payload.kelas.forEach((k) =&gt; {
+      kelasSheet.appendRow([k.id &amp;&amp; String(k.id).length ? k.id : uid(&quot;K&quot;), payload.id, k.nama_kelas, k.link || &quot;&quot;, k.peserta || 0, k.lulusan || 0, k.status || &quot;Materi Belum Lengkap&quot;]);
+    });
+  }
+
+  logAction(username, &quot;updateLkp&quot;, { id: payload.id });
+  return buildLkpObjects().find((d) =&gt; d.id === payload.id);
+}
+
+function deleteLkp(payload, username) {
+  const sh = getOrCreateSheet(SHEET_LKP, []);
+  const row = findRowIndexById(sh, payload.id);
+  if (row === -1) throw new Error(&quot;Data LKP tidak ditemukan&quot;);
+  sh.deleteRow(row);
+
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const values = kelasSheet.getDataRange().getValues();
+  for (let i = values.length - 1; i &gt;= 1; i--) {
+    if (String(values[i][1]) === String(payload.id)) kelasSheet.deleteRow(i + 1);
+  }
+  logAction(username, &quot;deleteLkp&quot;, { id: payload.id });
+  return { deleted: true };
+}
+
+/* ==========================================================================
+   CRUD Kelas (per baris, dipakai bila tidak melalui replace-all updateLkp)
+   ========================================================================== */
+function createKelas(payload, username) {
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const id = uid(&quot;K&quot;);
+  kelasSheet.appendRow([id, payload.lkpId, payload.nama_kelas, payload.link || &quot;&quot;, payload.peserta || 0, payload.lulusan || 0, payload.status || &quot;Materi Belum Lengkap&quot;]);
+  logAction(username, &quot;createKelas&quot;, { lkpId: payload.lkpId, id });
+  return buildLkpObjects().find((d) =&gt; d.id === payload.lkpId);
+}
+
+function updateKelas(payload, username) {
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const row = findRowIndexById(kelasSheet, payload.kelasId);
+  if (row === -1) throw new Error(&quot;Kelas tidak ditemukan&quot;);
+  const headers = kelasSheet.getRange(1, 1, 1, kelasSheet.getLastColumn()).getValues()[0];
+  const setCell = (col, val) =&gt; kelasSheet.getRange(row, headers.indexOf(col) + 1).setValue(val);
+  if (payload.nama_kelas !== undefined) setCell(&quot;nama_kelas&quot;, payload.nama_kelas);
+  if (payload.link !== undefined) setCell(&quot;link&quot;, payload.link);
+  if (payload.peserta !== undefined) setCell(&quot;peserta&quot;, payload.peserta);
+  if (payload.lulusan !== undefined) setCell(&quot;lulusan&quot;, payload.lulusan);
+  if (payload.status !== undefined) setCell(&quot;status&quot;, payload.status);
+  logAction(username, &quot;updateKelas&quot;, { kelasId: payload.kelasId });
+  return buildLkpObjects().find((d) =&gt; d.id === payload.lkpId);
+}
+
+function deleteKelas(payload, username) {
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const row = findRowIndexById(kelasSheet, payload.kelasId);
+  if (row === -1) throw new Error(&quot;Kelas tidak ditemukan&quot;);
+  kelasSheet.deleteRow(row);
+  logAction(username, &quot;deleteKelas&quot;, { kelasId: payload.kelasId });
+  return buildLkpObjects().find((d) =&gt; d.id === payload.lkpId);
+}
+
+/* ==========================================================================
+   Import massal (dipakai fitur Import Excel di Admin Panel)
+   ========================================================================== */
+function importBulk(payload, username) {
+  const sh = getOrCreateSheet(SHEET_LKP, []);
+  const now = new Date().toISOString();
+  const rows = (payload.records || []).map((r) =&gt; [uid(&quot;LKP&quot;), r.npsn || &quot;&quot;, r.nama_lkp || &quot;&quot;, r.alamat || &quot;&quot;, r.provinsi || &quot;&quot;, r.kab_kota || &quot;&quot;, r.program_keterampilan || &quot;&quot;, &quot;Belum Bimtek&quot;, &quot;&quot;, &quot;&quot;, now, now]);
+  if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+  logAction(username, &quot;importBulk&quot;, { count: rows.length });
+  return { imported: rows.length };
+}
+</pre>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Status Koneksi Saat Ini</h2></div>
+        <p class="text-muted" style="font-size:.85rem;">Selama URL Apps Script belum diisi, seluruh dashboard berjalan dalam <strong>Mode Demo</strong> memakai <code>data/lkp_data.json</code> (12.883 LKP hasil olahan file Excel Anda), dan perubahan Admin Panel disimpan sementara di <code>localStorage</code> browser ini agar tidak hilang saat memuat ulang halaman.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- API Settings Modal -->
+<div class="modal fade" id="apiSettingsModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-plug-circle-bolt me-2" style="color:var(--primary)"></i>Pengaturan Koneksi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted" style="font-size:.84rem;">Tempel URL Web App Google Apps Script Anda di sini agar dashboard membaca &amp; menulis langsung ke Google Spreadsheet. Kosongkan untuk kembali ke Mode Demo (data contoh lokal).</p>
+        <label class="form-label">URL Web App Apps Script</label>
+        <input id="apiUrlInput" type="url" class="form-control mb-2" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+        <div class="d-flex gap-2 mb-2">
+          <button id="btnTestApiUrl" type="button" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-satellite-dish me-1"></i>Tes Koneksi</button>
+          <button id="btnUseDemoMode" type="button" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-hard-drive me-1"></i>Gunakan Mode Demo</button>
+        </div>
+        <div id="apiSettingsStatus" style="font-size:.82rem;min-height:1.2em;"></div>
+        <hr>
+        <p class="text-muted mb-1" style="font-size:.78rem;">Sedang di Mode Demo? Anda bisa mengembalikan data contoh ke kondisi awal:</p>
+        <button id="btnResetDemoData" type="button" class="btn btn-soft-danger btn-sm"><i class="fa-solid fa-rotate-left me-1"></i>Reset Data Demo</button>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button id="btnSaveApiUrl" type="button" class="btn btn-primary">Simpan &amp; Muat Ulang</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="js/common.js"></script>
+<script src="js/api.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    initTheme();
+    initSidebarToggle();
+    initApiSettingsUi();
+    document.getElementById("btnCopyCode").addEventListener("click", () => {
+      const text = document.getElementById("codeGsBlock").innerText;
+      navigator.clipboard.writeText(text).then(() => toast("Kode Code.gs disalin ke clipboard.", "success"));
+    });
+  });
+</script>
+</body>
+</html>
