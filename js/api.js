@@ -10,7 +10,7 @@ const CONFIG = {
   // ATAU diisi oleh pengguna dari UI (tombol "Pengaturan Koneksi" di navbar),
   // yang disimpan di localStorage dan diprioritaskan di atas nilai di sini.
   // Contoh: "https://script.google.com/macros/s/AKfycbxxxxxxxxxxxxxxxxxxxxxxxxxx/exec"
-  API_URL: "https://script.google.com/macros/s/AKfycbzFlh3O5itBYqwUA9BdDRKtx5LgNvLGDKFDgi4NF4MNCyS-0bh2DbKSRxBf7y49NQJ_/exec",
+  API_URL: "",
 
   // Nama field token admin di localStorage
   AUTH_KEY: "lkp_dashboard_auth_token",
