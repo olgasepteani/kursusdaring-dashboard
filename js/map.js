@@ -5,7 +5,9 @@
    otomatis menampilkan daftar peringkat provinsi sebagai pengganti peta.
    ========================================================================== */
 
-const GEOJSON_URL = "https://raw.githubusercontent.com/superpikar/indonesia-geojson/master/indonesia-province-simple.json";
+// Sumber batas wilayah 38 provinsi terkini (termasuk Kalimantan Utara & 4 provinsi
+// pemekaran Papua). Properti nama provinsi tersedia di `PROVINSI`.
+const GEOJSON_URL = "https://raw.githubusercontent.com/denyherianto/indonesia-geojson-topojson-maps-with-38-provinces/main/GeoJSON/indonesia-38-provinces.geojson";
 
 let leafletMap = null;
 let geojsonLayer = null;
