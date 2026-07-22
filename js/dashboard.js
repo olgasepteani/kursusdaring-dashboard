@@ -226,6 +226,7 @@ function renderDetailContent(r) {
           <span><i class="fa-solid fa-users me-1 text-muted"></i>${k.peserta} Peserta</span>
           <span><i class="fa-solid fa-user-graduate me-1 text-muted"></i>${k.lulusan} Lulusan</span>
         </div>
+        ${k.program_keterampilan ? `<div class="mt-2"><span class="badge-status b-blue"><i class="fa-solid fa-graduation-cap"></i>${escapeHtml(k.program_keterampilan)}</span></div>` : ""}
       </div>`
         )
         .join("")
