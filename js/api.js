@@ -108,6 +108,9 @@ const Api = {
   async importBulk(records) {
     return apiPost("importBulk", { records });
   },
+  async importMoodleCsv(records) {
+    return apiPost("importMoodleCsv", { records });
+  },
 };
 
 /* ==========================================================================
@@ -256,6 +259,27 @@ const demoStore = (() => {
       if (action === "importBulk") {
         payload.records.forEach((r) => data.unshift({ id: uid("LKP"), kelas: [], jumlah_kelas: 0, jumlah_peserta: 0, jumlah_lulusan: 0, tahun_bimtek: [], status_bimtek: "Belum Bimtek", ...r }));
         return { imported: payload.records.length };
+      }
+      if (action === "importMoodleCsv") {
+        const npsnToRec = {};
+        data.forEach((r) => { if (r.npsn) npsnToRec[String(r.npsn).trim()] = r; });
+        let berhasil = 0;
+        const tidakCocok = new Set();
+        (payload.records || []).forEach((rec) => {
+          const rec0 = npsnToRec[String(rec.npsn || "").trim()];
+          if (!rec0) { if (rec.npsn) tidakCocok.add(rec.npsn); return; }
+          const kelasId = "K-MOODLE-" + rec.courseId;
+          let k = rec0.kelas.find((x) => x.id === kelasId);
+          if (!k) { k = { id: kelasId }; rec0.kelas.push(k); }
+          k.nama_kelas = rec.namaKelas;
+          k.link = rec.link || "";
+          k.peserta = Number(rec.peserta) || 0;
+          k.lulusan = 0;
+          k.status = k.peserta > 0 ? "Sudah Berjalan" : "Materi Belum Lengkap";
+          recalc(rec0);
+          berhasil++;
+        });
+        return { total_baris: (payload.records || []).length, berhasil, npsn_tidak_cocok: tidakCocok.size, contoh_npsn_tidak_cocok: [...tidakCocok].slice(0, 15) };
       }
       throw new Error("Aksi tidak dikenal: " + action);
     },

@@ -144,6 +144,41 @@ function wireAdminUi() {
   });
 
   document.getElementById("btnExportAdminExcel")?.addEventListener("click", () => exportToExcel(ADMIN_DATA));
+
+  document.getElementById("btnImportMoodleCsv")?.addEventListener("click", () => document.getElementById("importMoodleCsvInput").click());
+  document.getElementById("importMoodleCsvInput")?.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    parseMoodleReportCsv(file, async (err, records) => {
+      if (err) return toast("Gagal membaca file CSV: " + err.message, "danger");
+      if (!records.length) return toast("Tidak ada baris kelas valid ditemukan pada file.", "warning");
+      const totalPeserta = records.reduce((s, r) => s + r.peserta, 0);
+      const totalLulusan = records.reduce((s, r) => s + (r.lulusan || 0), 0);
+      const adaBidang = records.some((r) => r.bidang);
+      Swal.fire({
+        title: `Impor ${records.length} kelas dari laporan Moodle?`,
+        html: `Total ${totalPeserta} peserta, ${totalLulusan} lulusan${adaBidang ? ", termasuk data Bidang Keterampilan" : ""} akan diagregasi per kelas.<br>Kelas akan ditambahkan/diperbarui ke LKP yang NPSN-nya cocok (kelas dengan NPSN tidak dikenal akan dilewati, bukan membuat LKP baru).`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Ya, impor",
+        cancelButtonText: "Batal",
+        confirmButtonColor: "#004AAD",
+      }).then(async (res) => {
+        if (!res.isConfirmed) return;
+        try {
+          const result = await Api.importMoodleCsv(records);
+          let msg = `${result.berhasil} dari ${result.total_baris} kelas berhasil diimpor.`;
+          if (result.npsn_tidak_cocok > 0) msg += ` ${result.npsn_tidak_cocok} NPSN tidak dikenal (dilewati).`;
+          toast(msg, result.npsn_tidak_cocok > 0 ? "warning" : "success");
+          ADMIN_DATA = await Api.getAllLkp();
+          reloadAdminTable(ADMIN_DATA);
+        } catch (e2) {
+          toast("Gagal mengimpor: " + e2.message, "danger");
+        }
+      });
+    });
+    e.target.value = "";
+  });
 }
 
 /* ==========================================================================

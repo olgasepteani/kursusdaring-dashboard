@@ -163,7 +163,27 @@ dikembangkan lebih lanjut.
 
 ---
 
-## 7. Kredensial & keamanan
+## 7. Integrasi Moodle (opsional — sinkronisasi otomatis kelas & peserta)
+
+Kalau kelas-kelas LKP di-hosting di **Moodle**, dashboard ini bisa disinkronkan
+otomatis: 1 **kategori Moodle = 1 LKP**, dan setiap **course** di dalam
+kategori itu menjadi 1 baris di sheet `Kelas` — jumlah peserta diambil dari
+data enrolment (role *student*).
+
+> Saat ini penghitungan **jumlah lulusan/sertifikat masih dinonaktifkan**
+> (selalu 0) atas permintaan, supaya sinkronisasi lebih ringan dan cepat.
+> Struktur kode di `syncFromMoodle()` sudah disiapkan untuk mengaktifkan
+> kembali penghitungan dari status completion Custom Certificate kapan pun
+> dibutuhkan.
+
+Panduan setup lengkap (izin Web Service di Moodle, Script Properties, dan
+penjadwalan sinkronisasi harian) ada langsung sebagai komentar di bagian atas
+fungsi `syncFromMoodle()` pada `apps-script/Code.gs` — atau lihat halaman
+`integrasi.html` di dashboard (bagian bawah kode `Code.gs`).
+
+---
+
+## 8. Kredensial & keamanan
 
 Backend memakai autentikasi sederhana (username/password disimpan di Script
 Properties, token sesi disimpan di CacheService selama 6 jam) — cukup untuk

@@ -149,8 +149,8 @@ function getOrCreateSheet(name, headers) {
 
 /** Jalankan sekali secara manual dari editor Apps Script untuk inisialisasi sheet */
 function setupSpreadsheet() {
-  getOrCreateSheet(SHEET_LKP, [&quot;id&quot;, &quot;npsn&quot;, &quot;nama_lkp&quot;, &quot;alamat&quot;, &quot;provinsi&quot;, &quot;kab_kota&quot;, &quot;program_keterampilan&quot;, &quot;status_bimtek&quot;, &quot;tahun_bimtek&quot;, &quot;catatan&quot;, &quot;created_at&quot;, &quot;updated_at&quot;]);
-  getOrCreateSheet(SHEET_KELAS, [&quot;id&quot;, &quot;lkp_id&quot;, &quot;nama_kelas&quot;, &quot;link&quot;, &quot;peserta&quot;, &quot;lulusan&quot;, &quot;status&quot;]);
+  getOrCreateSheet(SHEET_LKP, [&quot;id&quot;, &quot;npsn&quot;, &quot;nama_lkp&quot;, &quot;alamat&quot;, &quot;provinsi&quot;, &quot;kab_kota&quot;, &quot;program_keterampilan&quot;, &quot;status_bimtek&quot;, &quot;tahun_bimtek&quot;, &quot;catatan&quot;, &quot;created_at&quot;, &quot;updated_at&quot;, &quot;status_moodle&quot;]);
+  getOrCreateSheet(SHEET_KELAS, [&quot;id&quot;, &quot;lkp_id&quot;, &quot;nama_kelas&quot;, &quot;link&quot;, &quot;peserta&quot;, &quot;lulusan&quot;, &quot;status&quot;, &quot;program_keterampilan&quot;]);
   getOrCreateSheet(SHEET_LOG, [&quot;timestamp&quot;, &quot;username&quot;, &quot;action&quot;, &quot;detail&quot;]);
   getOrCreateSheet(SHEET_REF, [&quot;tipe&quot;, &quot;nilai&quot;]);
   const props = PropertiesService.getScriptProperties();
@@ -254,6 +254,7 @@ function buildLkpObjects() {
       peserta: Number(k.peserta) || 0,
       lulusan: Number(k.lulusan) || 0,
       status: k.status,
+      program_keterampilan: k.program_keterampilan || &quot;&quot;,
     });
   });
 
@@ -268,6 +269,7 @@ function buildLkpObjects() {
       kab_kota: r.kab_kota,
       program_keterampilan: r.program_keterampilan,
       status_bimtek: r.status_bimtek,
+      status_moodle: r.status_moodle || &quot;Belum&quot;,
       tahun_bimtek: String(r.tahun_bimtek || &quot;&quot;).split(&quot;,&quot;).filter(Boolean).map(Number),
       catatan: r.catatan,
       kelas: kelas,
@@ -290,11 +292,7 @@ function doGet(e) {
     } else if (action === &quot;getLkp&quot;) {
       data = buildLkpObjects().find((d) =&gt; d.id === e.parameter.id) || null;
     } else if (action === &quot;getReferensi&quot;) {
-      const all = buildLkpObjects();
-      data = {
-        provinsi: [...new Set(all.map((d) =&gt; d.provinsi))].filter(Boolean).sort(),
-        program: [...new Set(all.map((d) =&gt; d.program_keterampilan))].filter(Boolean).sort(),
-      };
+      data = getReferensiData();
     } else {
       throw new Error(&quot;Aksi tidak dikenal: &quot; + action);
     }
@@ -302,6 +300,32 @@ function doGet(e) {
   } catch (err) {
     return jsonResponse({ ok: false, message: err.message });
   }
+}
+
+/** Daftar referensi untuk dropdown filter (Provinsi, Program Keterampilan).
+ *  Prioritas: pakai daftar baku dari sheet &quot;Referensi&quot; (tipe=provinsi / tipe=program)
+ *  kalau sudah diisi admin — supaya konsisten dengan pilihan dropdown resmi
+ *  (mis. custom field &quot;Bidang Keterampilan&quot; di Moodle). Kalau sheet Referensi
+ *  untuk tipe tsb masih kosong, otomatis diturunkan dari data yang ada (fallback,
+ *  bisa jadi masih ada variasi penulisan sampai admin mengisi daftar bakunya). */
+function getReferensiData() {
+  const refSheet = getOrCreateSheet(SHEET_REF, [&quot;tipe&quot;, &quot;nilai&quot;]);
+  const refRows = sheetToObjects(refSheet);
+  const fromRef = (tipe) =&gt; [...new Set(refRows.filter((r) =&gt; String(r.tipe).trim().toLowerCase() === tipe).map((r) =&gt; String(r.nilai).trim()))].filter(Boolean).sort();
+
+  const provinsiRef = fromRef(&quot;provinsi&quot;);
+  const programRef = fromRef(&quot;program&quot;);
+
+  let provinsi = provinsiRef;
+  let program = programRef;
+
+  if (provinsi.length === 0 || program.length === 0) {
+    const all = buildLkpObjects();
+    if (provinsi.length === 0) provinsi = [...new Set(all.map((d) =&gt; d.provinsi))].filter(Boolean).sort();
+    if (program.length === 0) program = [...new Set(all.map((d) =&gt; d.program_keterampilan))].filter(Boolean).sort();
+  }
+
+  return { provinsi, program };
 }
 
 /* ==========================================================================
@@ -336,6 +360,8 @@ function doPost(e) {
       data = deleteKelas(payload, username);
     } else if (action === &quot;importBulk&quot;) {
       data = importBulk(payload, username);
+    } else if (action === &quot;importMoodleCsv&quot;) {
+      data = importMoodleCsv(payload, username);
     } else {
       throw new Error(&quot;Aksi tidak dikenal: &quot; + action);
     }
@@ -361,7 +387,7 @@ function createLkp(payload, username) {
   if (Array.isArray(payload.kelas) &amp;&amp; payload.kelas.length) {
     const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
     payload.kelas.forEach((k) =&gt; {
-      kelasSheet.appendRow([uid(&quot;K&quot;), id, k.nama_kelas, k.link || &quot;&quot;, k.peserta || 0, k.lulusan || 0, k.status || &quot;Materi Belum Lengkap&quot;]);
+      kelasSheet.appendRow([uid(&quot;K&quot;), id, k.nama_kelas, k.link || &quot;&quot;, k.peserta || 0, k.lulusan || 0, k.status || &quot;Materi Belum Lengkap&quot;, k.program_keterampilan || &quot;&quot;]);
     });
   }
   logAction(username, &quot;createLkp&quot;, { id, nama_lkp: payload.nama_lkp });
@@ -394,7 +420,7 @@ function updateLkp(payload, username) {
       if (String(values[i][1]) === String(payload.id)) kelasSheet.deleteRow(i + 1);
     }
     payload.kelas.forEach((k) =&gt; {
-      kelasSheet.appendRow([k.id &amp;&amp; String(k.id).length ? k.id : uid(&quot;K&quot;), payload.id, k.nama_kelas, k.link || &quot;&quot;, k.peserta || 0, k.lulusan || 0, k.status || &quot;Materi Belum Lengkap&quot;]);
+      kelasSheet.appendRow([k.id &amp;&amp; String(k.id).length ? k.id : uid(&quot;K&quot;), payload.id, k.nama_kelas, k.link || &quot;&quot;, k.peserta || 0, k.lulusan || 0, k.status || &quot;Materi Belum Lengkap&quot;, k.program_keterampilan || &quot;&quot;]);
     });
   }
 
@@ -423,7 +449,7 @@ function deleteLkp(payload, username) {
 function createKelas(payload, username) {
   const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
   const id = uid(&quot;K&quot;);
-  kelasSheet.appendRow([id, payload.lkpId, payload.nama_kelas, payload.link || &quot;&quot;, payload.peserta || 0, payload.lulusan || 0, payload.status || &quot;Materi Belum Lengkap&quot;]);
+  kelasSheet.appendRow([id, payload.lkpId, payload.nama_kelas, payload.link || &quot;&quot;, payload.peserta || 0, payload.lulusan || 0, payload.status || &quot;Materi Belum Lengkap&quot;, payload.program_keterampilan || &quot;&quot;]);
   logAction(username, &quot;createKelas&quot;, { lkpId: payload.lkpId, id });
   return buildLkpObjects().find((d) =&gt; d.id === payload.lkpId);
 }
@@ -439,6 +465,7 @@ function updateKelas(payload, username) {
   if (payload.peserta !== undefined) setCell(&quot;peserta&quot;, payload.peserta);
   if (payload.lulusan !== undefined) setCell(&quot;lulusan&quot;, payload.lulusan);
   if (payload.status !== undefined) setCell(&quot;status&quot;, payload.status);
+  if (payload.program_keterampilan !== undefined &amp;&amp; headers.indexOf(&quot;program_keterampilan&quot;) !== -1) setCell(&quot;program_keterampilan&quot;, payload.program_keterampilan);
   logAction(username, &quot;updateKelas&quot;, { kelasId: payload.kelasId });
   return buildLkpObjects().find((d) =&gt; d.id === payload.lkpId);
 }
@@ -462,6 +489,482 @@ function importBulk(payload, username) {
   if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
   logAction(username, &quot;importBulk&quot;, { count: rows.length });
   return { imported: rows.length };
+}
+
+/* ==========================================================================
+   Import laporan peserta Moodle via CSV — dipakai fitur Admin Panel sebagai
+   alternatif saat sinkronisasi API lambat/belum sampai giliran kategorinya.
+   Format record dari frontend (sudah diagregasi per kelas di sisi klien):
+   { npsn, courseId, namaKelas, link, peserta }
+   Memakai skema id yang SAMA dengan syncFromMoodle (&quot;K-MOODLE-{courseId}&quot;),
+   jadi aman dijalankan kapan saja tanpa bikin data dobel. TIDAK membuat LKP
+   baru untuk NPSN yang tidak dikenal (supaya tidak membuat entri asal-asalan
+   dari kategori uji coba/dummy di laporan) — yang tidak cocok dicatat di
+   ringkasan supaya bisa ditinjau manual.
+   ========================================================================== */
+function importMoodleCsv(payload, username) {
+  const lkpSheet = getOrCreateSheet(SHEET_LKP, []);
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const existingLkp = sheetToObjects(lkpSheet);
+  const npsnToId = {};
+  existingLkp.forEach((r) =&gt; {
+    const npsn = String(r.npsn || &quot;&quot;).trim();
+    if (npsn) npsnToId[npsn] = r.id;
+  });
+
+  const records = payload.records || [];
+  let berhasil = 0;
+  const npsnTidakCocok = new Set();
+
+  records.forEach((rec) =&gt; {
+    const npsn = String(rec.npsn || &quot;&quot;).trim();
+    const lkpId = npsnToId[npsn];
+    if (!lkpId) {
+      if (npsn) npsnTidakCocok.add(npsn);
+      return;
+    }
+    const course = { id: rec.courseId, fullname: rec.namaKelas };
+    const bidang = rec.bidang || &quot;&quot;;
+    upsertKelasFromMoodle(kelasSheet, lkpId, course, Number(rec.peserta) || 0, Number(rec.lulusan) || 0, null, bidang);
+    if (bidang) fillLkpProgramKeterampilanIfBlank(lkpSheet, lkpId, bidang);
+    berhasil++;
+  });
+
+  const ringkasan = { total_baris: records.length, berhasil, npsn_tidak_cocok: npsnTidakCocok.size, contoh_npsn_tidak_cocok: [...npsnTidakCocok].slice(0, 15) };
+  logAction(username, &quot;importMoodleCsv&quot;, ringkasan);
+  return ringkasan;
+}
+
+/* ============================================================================
+   INTEGRASI MOODLE — Sinkronisasi Kategori/Kelas/Peserta
+   ============================================================================
+   Pemetaan: 1 Kategori Moodle = 1 LKP. Setiap kelas (course) di dalam
+   kategori itu menjadi 1 baris di sheet &quot;Kelas&quot;, dengan jumlah peserta
+   dihitung dari enrolment (role &quot;student&quot;).
+
+   CATATAN: Penghitungan &quot;lulusan/sertifikat&quot; SEMENTARA DINONAKTIFKAN atas
+   permintaan — nilainya selalu 0 untuk saat ini, supaya sinkronisasi lebih
+   cepat &amp; sederhana (tidak perlu memanggil status completion per peserta).
+   Struktur kode tetap disiapkan agar mudah diaktifkan kembali nanti bila
+   dibutuhkan — cukup minta bantuan untuk mengaktifkan kembali logika
+   completion Custom Certificate.
+
+   SETUP DI MOODLE (dilakukan oleh admin Moodle, sekali saja):
+   1. Site administration &gt; Advanced features &gt; aktifkan &quot;Enable web services&quot;.
+   2. Site administration &gt; Plugins &gt; Web services &gt; Manage protocols &gt;
+      aktifkan &quot;REST protocol&quot;.
+   3. Site administration &gt; Plugins &gt; Web services &gt; External services &gt;
+      buat service baru &quot;Dashboard Kursus Daring API&quot;, centang &quot;Enabled&quot;,
+      tambahkan fungsi berikut ke dalamnya:
+        - core_course_get_categories
+        - core_course_get_courses_by_field
+        - core_enrol_get_enrolled_users
+   4. Buat/gunakan user khusus (mis. &quot;apisync&quot;) dengan role yang punya izin
+      melihat semua kategori/kursus/peserta (mis. Manager, atau role custom
+      dengan capability moodle/course:viewparticipants).
+   5. Site administration &gt; Plugins &gt; Web services &gt; Manage tokens &gt;
+      buat token baru untuk user tsb dan service pada langkah 3. Salin token-nya.
+
+   SETUP DI APPS SCRIPT (sekali saja):
+   1. Buka Project Settings &gt; Script Properties, tambahkan:
+        MOODLE_URL   = https://domain-moodle-anda.sch.id   (tanpa slash di akhir)
+        MOODLE_TOKEN = (token dari langkah 5 di atas)
+   2. Jalankan fungsi createMoodleSyncTrigger() SEKALI dari editor Apps
+      Script agar sinkronisasi berjalan otomatis setiap hari jam 02:00.
+      (Atau jalankan syncFromMoodle() manual kapan saja untuk sinkron langsung.)
+   ============================================================================ */
+
+const MOODLE_CERT_MODNAME = &quot;customcert&quot;; // dipakai kembali bila penghitungan sertifikat diaktifkan
+
+/** HAPUS DATA EXCEL LAMA untuk LKP yang status_moodle = &quot;Ya&quot; SAJA.
+ *  Sebelum menghapus, seluruh baris yang akan dihapus DICADANGKAN dulu ke
+ *  sheet baru &quot;Backup_Kelas_Terhapus&quot; (ditambahkan/append, tidak ditimpa),
+ *  supaya bisa dikembalikan manual kalau ternyata ada yang salah hapus.
+ *  LKP yang belum status_moodle=&quot;Ya&quot; TIDAK disentuh sama sekali. */
+function hapusKelasExcelUntukLkpDiMoodle() {
+  const lkpSheet = getOrCreateSheet(SHEET_LKP, []);
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const lkpRows = sheetToObjects(lkpSheet);
+  const lkpSudahMoodle = new Set(lkpRows.filter((r) =&gt; String(r.status_moodle).trim() === &quot;Ya&quot;).map((r) =&gt; r.id));
+
+  const isLama = (id) =&gt; /^K-\d+-\d+$/.test(String(id));
+
+  const ss = getSS();
+  let backupSheet = ss.getSheetByName(&quot;Backup_Kelas_Terhapus&quot;);
+  if (!backupSheet) {
+    backupSheet = ss.insertSheet(&quot;Backup_Kelas_Terhapus&quot;);
+    backupSheet.appendRow([&quot;dihapus_pada&quot;, &quot;id&quot;, &quot;lkp_id&quot;, &quot;nama_kelas&quot;, &quot;link&quot;, &quot;peserta&quot;, &quot;lulusan&quot;, &quot;status&quot;, &quot;program_keterampilan&quot;]);
+    backupSheet.setFrozenRows(1);
+  }
+
+  const values = kelasSheet.getDataRange().getValues();
+  const headers = values[0];
+  const now = new Date().toISOString();
+  let dihapus = 0;
+
+  // Hapus dari bawah ke atas supaya nomor baris tidak bergeser saat proses
+  for (let i = values.length - 1; i &gt;= 1; i--) {
+    const row = values[i];
+    const rowObj = {};
+    headers.forEach((h, idx) =&gt; (rowObj[h] = row[idx]));
+    if (isLama(rowObj.id) &amp;&amp; lkpSudahMoodle.has(rowObj.lkp_id)) {
+      backupSheet.appendRow([now, rowObj.id, rowObj.lkp_id, rowObj.nama_kelas, rowObj.link, rowObj.peserta, rowObj.lulusan, rowObj.status, rowObj.program_keterampilan || &quot;&quot;]);
+      kelasSheet.deleteRow(i + 1);
+      dihapus++;
+    }
+  }
+
+  logAction(&quot;admin&quot;, &quot;hapusKelasExcelUntukLkpDiMoodle&quot;, { dihapus });
+  Logger.log(`Selesai. ${dihapus} baris kelas lama (Excel) dihapus untuk LKP yang sudah ada di Moodle. Cadangan tersimpan di sheet &quot;Backup_Kelas_Terhapus&quot;.`);
+  return { dihapus };
+}
+
+/** BACKFILL — jalankan SEKALI SAJA setelah menambah kolom &quot;status_moodle&quot; ke
+ *  sheet LKP, supaya LKP yang sudah tersinkron dari run-run syncFromMoodle
+ *  SEBELUM kolom ini ada, ikut ditandai &quot;Ya&quot; tanpa perlu sync ulang dari nol.
+ *  Aman dijalankan berkali-kali (idempotent). */
+function backfillStatusMoodle() {
+  const lkpSheet = getOrCreateSheet(SHEET_LKP, []);
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const headers = lkpSheet.getRange(1, 1, 1, lkpSheet.getLastColumn()).getValues()[0];
+  const col = headers.indexOf(&quot;status_moodle&quot;);
+  if (col === -1) throw new Error(&#x27;Kolom &quot;status_moodle&quot; belum ada di sheet LKP. Tambahkan dulu header itu di baris 1 sheet LKP, baru jalankan fungsi ini lagi.&#x27;);
+
+  const kelasRows = sheetToObjects(kelasSheet);
+  const lkpIdsWithMoodle = new Set(kelasRows.filter((k) =&gt; /^K-MOODLE-/.test(String(k.id))).map((k) =&gt; k.lkp_id));
+
+  const lkpValues = lkpSheet.getDataRange().getValues();
+  const idCol = headers.indexOf(&quot;id&quot;);
+  let ditandai = 0;
+  for (let i = 1; i &lt; lkpValues.length; i++) {
+    if (lkpIdsWithMoodle.has(lkpValues[i][idCol])) {
+      lkpSheet.getRange(i + 1, col + 1).setValue(&quot;Ya&quot;);
+      ditandai++;
+    }
+  }
+  Logger.log(`Selesai. ${ditandai} LKP ditandai status_moodle = &quot;Ya&quot; berdasarkan kelas yang sudah ada.`);
+  return { ditandai };
+}
+
+/** REVIEW DATA GANDA — jalankan manual sekali (atau kapan saja) untuk melihat
+ *  LKP mana yang punya kelas lama dari Excel (id format &quot;K-angka-angka&quot;)
+ *  SEKALIGUS kelas baru dari Moodle (id format &quot;K-MOODLE-angka&quot;), supaya bisa
+ *  ditinjau dan diputuskan mana yang perlu dihapus manual. TIDAK menghapus
+ *  apapun secara otomatis — cuma menulis laporan ke sheet baru
+ *  &quot;Review_Kelas_Ganda&quot; supaya aman ditinjau dulu. */
+function reviewKelasGanda() {
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const lkpSheet = getOrCreateSheet(SHEET_LKP, []);
+  const kelasRows = sheetToObjects(kelasSheet);
+  const lkpRows = sheetToObjects(lkpSheet);
+  const namaLkpById = {};
+  lkpRows.forEach((r) =&gt; (namaLkpById[r.id] = r.nama_lkp));
+
+  const isLama = (id) =&gt; /^K-\d+-\d+$/.test(String(id));
+  const isBaru = (id) =&gt; /^K-MOODLE-/.test(String(id));
+
+  const byLkp = {};
+  kelasRows.forEach((k) =&gt; {
+    if (!byLkp[k.lkp_id]) byLkp[k.lkp_id] = { lama: [], baru: [] };
+    if (isLama(k.id)) byLkp[k.lkp_id].lama.push(k);
+    else if (isBaru(k.id)) byLkp[k.lkp_id].baru.push(k);
+  });
+
+  const ss = getSS();
+  let reviewSheet = ss.getSheetByName(&quot;Review_Kelas_Ganda&quot;);
+  if (reviewSheet) ss.deleteSheet(reviewSheet); // mulai bersih tiap kali dijalankan ulang
+  reviewSheet = ss.insertSheet(&quot;Review_Kelas_Ganda&quot;);
+  reviewSheet.appendRow([&quot;lkp_id&quot;, &quot;nama_lkp&quot;, &quot;jenis&quot;, &quot;kelas_id&quot;, &quot;nama_kelas&quot;, &quot;peserta&quot;, &quot;saran&quot;]);
+  reviewSheet.setFrozenRows(1);
+
+  let lkpTerdampak = 0;
+  Object.keys(byLkp).forEach((lkpId) =&gt; {
+    const g = byLkp[lkpId];
+    if (g.lama.length === 0 || g.baru.length === 0) return; // hanya yang punya KEDUANYA
+    lkpTerdampak++;
+    const namaLkp = namaLkpById[lkpId] || &quot;(tidak diketahui)&quot;;
+    g.lama.forEach((k) =&gt; {
+      const saran = Number(k.peserta) === 0 ? &quot;Kandidat kuat untuk dihapus (data lama, 0 peserta)&quot; : &quot;Cek manual — data lama tapi ada peserta, mungkin bukan duplikat&quot;;
+      reviewSheet.appendRow([lkpId, namaLkp, &quot;LAMA (Excel)&quot;, k.id, k.nama_kelas, k.peserta, saran]);
+    });
+    g.baru.forEach((k) =&gt; {
+      reviewSheet.appendRow([lkpId, namaLkp, &quot;BARU (Moodle)&quot;, k.id, k.nama_kelas, k.peserta, &quot;Data hidup dari Moodle — pertahankan&quot;]);
+    });
+  });
+
+  reviewSheet.autoResizeColumns(1, 7);
+  Logger.log(`Selesai. ${lkpTerdampak} LKP punya kelas lama &amp; baru sekaligus — lihat sheet &quot;Review_Kelas_Ganda&quot;.`);
+  return { lkp_terdampak: lkpTerdampak };
+}
+
+/** FUNGSI DIAGNOSTIK — cek role apa saja yang sebenarnya dikembalikan Moodle
+ *  untuk peserta di 1 course tertentu. Ganti angka di dalam kurung dengan
+ *  ID course yang Anda tahu punya peserta (lihat dari URL course, contoh
+ *  https://.../course/view.php?id=1089 → courseId = 1089). */
+function debugCekPesertaMoodle(courseId) {
+  const enrolled = moodleCall(&quot;core_enrol_get_enrolled_users&quot;, { courseid: courseId }) || [];
+  Logger.log(`Total user terdaftar di course ${courseId}: ${enrolled.length}`);
+  enrolled.slice(0, 10).forEach((u) =&gt; {
+    const roleNames = (u.roles || []).map((r) =&gt; `${r.shortname} (${r.name || &quot;-&quot;})`).join(&quot;, &quot;);
+    Logger.log(`user=&quot;${u.fullname}&quot; | roles=[${roleNames || &quot;TIDAK ADA ROLE&quot;}]`);
+  });
+}
+
+/** FUNGSI DIAGNOSTIK — jalankan manual sekali untuk mengecek apa yang benar-benar
+ *  dikembalikan Moodle untuk kategori yang punya course di dalamnya, khususnya
+ *  field idnumber. Hasilnya lihat di Execution log (bukan disimpan ke sheet).
+ *  Aman dijalankan berkali-kali, tidak mengubah data apapun. */
+function debugCekKategoriMoodle() {
+  const categories = moodleCall(&quot;core_course_get_categories&quot;, {});
+  const withCourses = categories.filter((c) =&gt; c.coursecount &amp;&amp; c.coursecount &gt; 0);
+  Logger.log(`Total kategori: ${categories.length}, punya course: ${withCourses.length}`);
+  withCourses.slice(0, 20).forEach((c) =&gt; {
+    Logger.log(`id=${c.id} | name=&quot;${c.name}&quot; | idnumber=&quot;${c.idnumber}&quot; | coursecount=${c.coursecount}`);
+  });
+  if (withCourses.length &gt; 20) Logger.log(`... dan ${withCourses.length - 20} kategori lainnya (dipotong demi keringkasan log)`);
+}
+
+/** Panggilan generik ke Moodle Web Service REST (format JSON) */
+function moodleCall(wsfunction, params) {
+  const props = PropertiesService.getScriptProperties();
+  const baseUrl = props.getProperty(&quot;MOODLE_URL&quot;);
+  const token = props.getProperty(&quot;MOODLE_TOKEN&quot;);
+  if (!baseUrl || !token) throw new Error(&quot;MOODLE_URL / MOODLE_TOKEN belum diatur di Script Properties.&quot;);
+
+  const query = Object.assign({ wstoken: token, wsfunction: wsfunction, moodlewsrestformat: &quot;json&quot; }, params || {});
+  const qs = Object.keys(query)
+    .map((k) =&gt; encodeURIComponent(k) + &quot;=&quot; + encodeURIComponent(query[k]))
+    .join(&quot;&amp;&quot;);
+  const url = `${baseUrl}/webservice/rest/server.php?${qs}`;
+  const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  const json = JSON.parse(res.getContentText());
+  if (json &amp;&amp; json.exception) {
+    throw new Error(`Moodle API error [${wsfunction}]: ${json.message || json.errorcode}`);
+  }
+  return json;
+}
+
+/** Fungsi utama sinkronisasi — jalankan manual atau lewat trigger otomatis.
+ *  Karena jumlah kategori bisa lebih banyak dari yang muat diproses dalam
+ *  1 kali jalan (batas 6 menit Apps Script), fungsi ini memakai &quot;checkpoint&quot;
+ *  (disimpan di Script Properties) supaya run berikutnya MELANJUTKAN dari
+ *  kategori terakhir yang berhasil diproses, bukan mengulang dari awal lagi.
+ *  Setelah 1 putaran penuh selesai (sampai kategori terakhir), checkpoint
+ *  otomatis direset supaya putaran berikutnya me-refresh dari awal lagi. */
+function syncFromMoodle() {
+  const t0 = new Date().getTime();
+  const props = PropertiesService.getScriptProperties();
+  const lkpSheet = getOrCreateSheet(SHEET_LKP, []);
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const existingLkp = sheetToObjects(lkpSheet);
+
+  // Catatan: sengaja TIDAK memakai filter criteria &quot;visible&quot; — Moodle mewajibkan
+  // capability tambahan (moodle/category:viewhiddencategories) untuk filter itu,
+  // yang sering tidak dimiliki user API biasa. Tanpa filter, Moodle otomatis
+  // mengembalikan kategori yang boleh dilihat oleh user token ini.
+  const allCategories = moodleCall(&quot;core_course_get_categories&quot;, {});
+  // Urutan tetap (berdasarkan id) supaya checkpoint konsisten antar run
+  allCategories.sort((a, b) =&gt; a.id - b.id);
+
+  const cursor = Number(props.getProperty(&quot;MOODLE_SYNC_CURSOR&quot;) || 0);
+  let startIndex = 0;
+  if (cursor) {
+    const idx = allCategories.findIndex((c) =&gt; c.id === cursor);
+    startIndex = idx === -1 ? 0 : idx + 1; // lanjut SETELAH kategori checkpoint
+  }
+
+  let totalKelas = 0;
+  let totalPeserta = 0;
+  let totalLulusan = 0;
+  let skippedForTimeout = 0;
+  let skippedNoIdNumber = 0;
+  let processedCount = 0;
+  let reachedEnd = true;
+  let lastProcessedId = cursor;
+
+  for (let i = startIndex; i &lt; allCategories.length; i++) {
+    const cat = allCategories[i];
+
+    if (new Date().getTime() - t0 &gt; 5 * 60 * 1000) {
+      reachedEnd = false; // belum sampai kategori terakhir — masih ada sisa untuk run berikutnya
+      skippedForTimeout = allCategories.length - i;
+      break;
+    }
+
+    lastProcessedId = cat.id;
+    processedCount++;
+
+    if (!cat.coursecount || cat.coursecount === 0) continue;
+
+    const lkpId = findOrCreateLkpByNpsn(lkpSheet, existingLkp, cat.idnumber, cat.name);
+    if (!lkpId) {
+      skippedNoIdNumber++;
+      continue; // kategori belum diisi &quot;ID number&quot; (NPSN) — dilewati, tidak disinkron
+    }
+    const courseResp = moodleCall(&quot;core_course_get_courses_by_field&quot;, { field: &quot;category&quot;, value: cat.id });
+    const courses = (courseResp.courses || []).filter((c) =&gt; c.id !== 1); // exclude &quot;Site&quot; course
+
+    courses.forEach((course) =&gt; {
+      const enrolled = moodleCall(&quot;core_enrol_get_enrolled_users&quot;, { courseid: course.id }) || [];
+      // Role peserta di instalasi Moodle ini bernama &quot;peserta&quot; (custom), bukan &quot;student&quot;
+      // bawaan Moodle — daftar ini mendukung keduanya sekaligus supaya tetap aman
+      // dipakai walau nanti role-nya berubah lagi atau dipakai di Moodle lain.
+      const ROLE_PESERTA = [&quot;student&quot;, &quot;peserta&quot;];
+      const students = enrolled.filter((u) =&gt; (u.roles || []).some((r) =&gt; ROLE_PESERTA.includes(r.shortname)));
+      const bidang = getCourseCustomFieldValue(course, &quot;bidang_keterampilan&quot;);
+
+      // Sertifikat/lulusan SEMENTARA DIABAIKAN atas permintaan — jumlah lulusan diisi 0.
+      // Untuk mengaktifkan kembali penghitungan lulusan dari completion Custom Certificate,
+      // lihat versi lengkap fungsi ini di riwayat/dokumentasi, atau minta bantuan kembali.
+      const lulus = 0;
+
+      upsertKelasFromMoodle(kelasSheet, lkpId, course, students.length, lulus, null, bidang);
+      if (bidang) fillLkpProgramKeterampilanIfBlank(lkpSheet, lkpId, bidang);
+      totalKelas++;
+      totalPeserta += students.length;
+      totalLulusan += lulus;
+    });
+  }
+
+  // Simpan/reset checkpoint: kalau sudah sampai kategori terakhir dalam 1 putaran,
+  // reset ke awal (0) supaya putaran berikutnya me-refresh ulang dari kategori pertama.
+  // Kalau berhenti karena timeout, simpan id kategori terakhir yang diproses supaya
+  // run berikutnya lanjut dari situ.
+  props.setProperty(&quot;MOODLE_SYNC_CURSOR&quot;, reachedEnd ? &quot;0&quot; : String(lastProcessedId));
+
+  const ringkasan = {
+    total_kategori: allCategories.length,
+    kategori_diproses_run_ini: processedCount,
+    kelas: totalKelas,
+    peserta: totalPeserta,
+    lulusan: totalLulusan,
+    kategori_tanpa_id_number: skippedNoIdNumber,
+    kategori_belum_diproses: skippedForTimeout,
+    putaran_selesai: reachedEnd,
+  };
+  logAction(&quot;moodle-sync&quot;, &quot;syncFromMoodle&quot;, ringkasan);
+  return ringkasan;
+}
+
+/** Ambil nilai Custom Course Field Moodle berdasarkan &quot;Short name&quot;-nya.
+ *  Moodle sudah menyertakan array `customfields` pada respons
+ *  core_course_get_courses_by_field, jadi tidak perlu panggilan API tambahan. */
+function getCourseCustomFieldValue(course, shortname) {
+  const field = (course.customfields || []).find((f) =&gt; f.shortname === shortname);
+  if (!field) return &quot;&quot;;
+  // &quot;value&quot; biasanya sudah berupa teks tampilan (mis. label dropdown yang dipilih)
+  return String(field.value || field.valueraw || &quot;&quot;).trim();
+}
+
+/** Isi program_keterampilan di level LKP HANYA jika masih kosong — supaya tidak
+ *  menimpa data yang sudah diisi manual/dari Excel sebelumnya. Kalau kelas-kelas
+ *  dalam 1 LKP punya bidang keterampilan berbeda-beda, nilai LKP-level hanya
+ *  memakai yang pertama ditemukan (untuk kebutuhan filter/grafik ringkas);
+ *  rincian per kelas tetap akurat tersimpan di sheet Kelas. */
+function fillLkpProgramKeterampilanIfBlank(lkpSheet, lkpId, bidang) {
+  const row = findRowIndexById(lkpSheet, lkpId);
+  if (row === -1) return;
+  const headers = lkpSheet.getRange(1, 1, 1, lkpSheet.getLastColumn()).getValues()[0];
+  const col = headers.indexOf(&quot;program_keterampilan&quot;) + 1;
+  if (col === 0) return;
+  const current = lkpSheet.getRange(row, col).getValue();
+  if (!current) lkpSheet.getRange(row, col).setValue(bidang);
+}
+
+/** Cari cmid aktivitas Custom Certificate dalam 1 course; null bila tidak ada */
+function findCertificateCmId(courseId) {
+  const contents = moodleCall(&quot;core_course_get_contents&quot;, { courseid: courseId });
+  for (const section of contents) {
+    for (const mod of section.modules || []) {
+      if (mod.modname === MOODLE_CERT_MODNAME) return mod.id;
+    }
+  }
+  return null;
+}
+
+/** Cocokkan kategori Moodle ke LKP yang sudah ada lewat NPSN — dibaca dari
+ *  field &quot;ID number&quot; pada kategori Moodle (properti `idnumber`), BUKAN dari
+ *  ID kategori internal Moodle maupun nama kategori (supaya tidak salah
+ *  cocok akibat penulisan nama yang berbeda-beda).
+ *  Jika kategori tidak punya &quot;ID number&quot; terisi, kategori itu DILEWATI
+ *  (tidak disinkron) — dicatat di Log supaya kelihatan mana yang perlu
+ *  dilengkapi ID number-nya di Moodle. */
+function findOrCreateLkpByNpsn(lkpSheet, existingLkp, categoryIdNumber, categoryName) {
+  const npsn = String(categoryIdNumber || &quot;&quot;).trim();
+  if (!npsn) return null; // kategori belum diisi NPSN di &quot;ID number&quot; — lewati
+
+  const headers = lkpSheet.getRange(1, 1, 1, lkpSheet.getLastColumn()).getValues()[0];
+  const hasStatusMoodleCol = headers.indexOf(&quot;status_moodle&quot;) !== -1;
+
+  const found = existingLkp.find((r) =&gt; String(r.npsn || &quot;&quot;).trim() === npsn);
+  if (found) {
+    if (hasStatusMoodleCol) {
+      const row = findRowIndexById(lkpSheet, found.id);
+      if (row !== -1) lkpSheet.getRange(row, headers.indexOf(&quot;status_moodle&quot;) + 1).setValue(&quot;Ya&quot;);
+    }
+    return found.id;
+  }
+
+  const id = uid(&quot;LKP&quot;);
+  const now = new Date().toISOString();
+  const rowObj = {
+    id,
+    npsn,
+    nama_lkp: categoryName,
+    alamat: &quot;&quot;,
+    provinsi: &quot;&quot;,
+    kab_kota: &quot;&quot;,
+    program_keterampilan: &quot;&quot;,
+    status_bimtek: &quot;Belum Bimtek&quot;,
+    tahun_bimtek: &quot;&quot;,
+    catatan: &quot;Dibuat otomatis dari sinkronisasi Moodle (dicocokkan lewat NPSN pada ID number kategori) — lengkapi alamat, provinsi &amp; kab/kota secara manual.&quot;,
+    created_at: now,
+    updated_at: now,
+    status_moodle: &quot;Ya&quot;,
+  };
+  lkpSheet.appendRow(headers.map((h) =&gt; (rowObj[h] !== undefined ? rowObj[h] : &quot;&quot;)));
+  existingLkp.push({ id, npsn, nama_lkp: categoryName });
+  return id;
+}
+
+/** Tambah/perbarui 1 baris kelas hasil sinkronisasi Moodle (idempotent berdasar courseid) */
+function upsertKelasFromMoodle(kelasSheet, lkpId, course, jumlahPeserta, jumlahLulusan, cmId, bidangKeterampilan) {
+  const props = PropertiesService.getScriptProperties();
+  const baseUrl = props.getProperty(&quot;MOODLE_URL&quot;);
+  const kelasId = &quot;K-MOODLE-&quot; + course.id;
+  const link = `${baseUrl}/course/view.php?id=${course.id}`;
+  let status = &quot;Materi Belum Lengkap&quot;;
+  if (jumlahPeserta &gt; 0) status = &quot;Sudah Berjalan&quot;;
+  else if (cmId) status = &quot;Materi Lengkap - Belum Ada Peserta&quot;;
+
+  const headers = kelasSheet.getRange(1, 1, 1, kelasSheet.getLastColumn()).getValues()[0];
+  const hasBidangCol = headers.indexOf(&quot;program_keterampilan&quot;) !== -1;
+
+  const row = findRowIndexById(kelasSheet, kelasId);
+  if (row === -1) {
+    // Susun baris sesuai urutan header sheet supaya tetap benar walau header sudah
+    // ditambah kolom &quot;program_keterampilan&quot; (sheet baru) atau belum (sheet lama).
+    const rowObj = { id: kelasId, lkp_id: lkpId, nama_kelas: course.fullname, link: link, peserta: jumlahPeserta, lulusan: jumlahLulusan, status: status, program_keterampilan: bidangKeterampilan || &quot;&quot; };
+    kelasSheet.appendRow(headers.map((h) =&gt; (rowObj[h] !== undefined ? rowObj[h] : &quot;&quot;)));
+  } else {
+    const setCell = (col, val) =&gt; kelasSheet.getRange(row, headers.indexOf(col) + 1).setValue(val);
+    setCell(&quot;lkp_id&quot;, lkpId);
+    setCell(&quot;nama_kelas&quot;, course.fullname);
+    setCell(&quot;link&quot;, link);
+    setCell(&quot;peserta&quot;, jumlahPeserta);
+    setCell(&quot;lulusan&quot;, jumlahLulusan);
+    setCell(&quot;status&quot;, status);
+    if (hasBidangCol &amp;&amp; bidangKeterampilan) setCell(&quot;program_keterampilan&quot;, bidangKeterampilan);
+  }
+}
+
+/** Jalankan SEKALI dari editor Apps Script agar sinkronisasi berjalan otomatis tiap hari jam 02:00 */
+function createMoodleSyncTrigger() {
+  // Hapus trigger lama bernama sama supaya tidak dobel bila dijalankan ulang
+  ScriptApp.getProjectTriggers().forEach((t) =&gt; {
+    if (t.getHandlerFunction() === &quot;syncFromMoodle&quot;) ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger(&quot;syncFromMoodle&quot;).timeBased().everyDays(1).atHour(2).create();
 }
 </pre>
       </div>
