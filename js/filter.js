@@ -20,13 +20,18 @@ function lkpStatusKelasSet(rec) {
   return [...new Set(rec.kelas.map((k) => k.status))];
 }
 
+/** Kumpulan bidang keterampilan milik seluruh kelas dalam 1 LKP (bukan lagi 1 nilai per LKP) */
+function lkpProgramSet(rec) {
+  return new Set((rec.kelas || []).map((k) => k.program_keterampilan).filter(Boolean));
+}
+
 function applyFilters(data) {
   const f = FilterState;
   const kw = f.keyword.trim().toLowerCase();
   return data.filter((r) => {
     if (f.provinsi && r.provinsi !== f.provinsi) return false;
     if (f.kabkota && r.kab_kota !== f.kabkota) return false;
-    if (f.program && r.program_keterampilan !== f.program) return false;
+    if (f.program && !lkpProgramSet(r).has(f.program)) return false;
     if (f.statusBimtek && r.status_bimtek !== f.statusBimtek) return false;
     if (f.statusKelas && !lkpStatusKelasSet(r).includes(f.statusKelas)) return false;
     if (f.tahunBimtek && !(r.tahun_bimtek || []).map(String).includes(f.tahunBimtek)) return false;
@@ -48,7 +53,7 @@ function populateFilterOptions(allData, referensi) {
   const tahunSel = document.getElementById("fltTahun");
 
   const provList = referensi?.provinsi?.length ? referensi.provinsi : [...new Set(allData.map((d) => d.provinsi))].filter(Boolean).sort();
-  const progList = referensi?.program?.length ? referensi.program : [...new Set(allData.map((d) => d.program_keterampilan))].filter(Boolean).sort();
+  const progList = referensi?.program?.length ? referensi.program : [...new Set(allData.flatMap((d) => (d.kelas || []).map((k) => k.program_keterampilan)))].filter(Boolean).sort();
   const tahunList = [...new Set(allData.flatMap((d) => d.tahun_bimtek || []))].sort();
 
   fillSelect(provinsiSel, provList, "Semua Provinsi");

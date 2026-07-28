@@ -5,6 +5,7 @@
 let ADMIN_DATA = [];
 let adminTable = null;
 let editingLkpId = null;
+let PROGRAM_OPTIONS = [];
 
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
@@ -32,7 +33,9 @@ async function showAdminPanel() {
   if (IS_DEMO_MODE) showDemoBanner();
   showSpinner(true);
   try {
-    ADMIN_DATA = await Api.getAllLkp();
+    const [data, referensi] = await Promise.all([Api.getAllLkp(), Api.getReferensi().catch(() => null)]);
+    ADMIN_DATA = data;
+    PROGRAM_OPTIONS = referensi?.program?.length ? referensi.program : [...new Set(ADMIN_DATA.flatMap((d) => (d.kelas || []).map((k) => k.program_keterampilan)))].filter(Boolean).sort();
     initAdminTable();
     reloadAdminTable(ADMIN_DATA);
     document.getElementById("adminUserLabel").textContent = localStorage.getItem("lkp_admin_username") || "Admin";
@@ -195,7 +198,6 @@ function openLkpForm(id) {
   document.getElementById("f_provinsi").value = rec?.provinsi || "";
   document.getElementById("f_kab_kota").value = rec?.kab_kota || "";
   document.getElementById("f_alamat").value = rec?.alamat || "";
-  document.getElementById("f_program").value = rec?.program_keterampilan || "";
   document.getElementById("f_bimtek2025").checked = !!(rec?.tahun_bimtek || []).includes(2025);
   document.getElementById("f_bimtek2026").checked = !!(rec?.tahun_bimtek || []).includes(2026);
 
@@ -212,6 +214,11 @@ function addKelasRow(kelas) {
   const div = document.createElement("div");
   div.className = "kelas-card";
   div.id = rowId;
+  const bidangOptions = ['<option value="">Belum ditentukan</option>']
+    .concat(PROGRAM_OPTIONS.map((p) => `<option value="${escapeHtml(p)}" ${kelas?.program_keterampilan === p ? "selected" : ""}>${escapeHtml(p)}</option>`))
+    .join("");
+  const bidangLegacy = kelas?.program_keterampilan && !PROGRAM_OPTIONS.includes(kelas.program_keterampilan) ? `<option value="${escapeHtml(kelas.program_keterampilan)}" selected>${escapeHtml(kelas.program_keterampilan)} (data lama, di luar daftar baku)</option>` : "";
+
   div.innerHTML = `
     <input type="hidden" class="k_id" value="${kelas?.id || ""}">
     <div class="row g-2">
@@ -219,7 +226,7 @@ function addKelasRow(kelas) {
         <label class="form-label">Nama Kelas</label>
         <input class="form-control form-control-sm k_nama" value="${kelas ? escapeHtml(kelas.nama_kelas) : ""}" placeholder="Contoh: Kelas Make Up" required>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Link Kelas</label>
         <input class="form-control form-control-sm k_link" value="${kelas ? escapeHtml(kelas.link) : ""}" placeholder="https://...">
       </div>
@@ -227,15 +234,38 @@ function addKelasRow(kelas) {
         <label class="form-label">Peserta</label>
         <input type="number" min="0" class="form-control form-control-sm k_peserta" value="${kelas?.peserta ?? 0}">
       </div>
-      <div class="col-md-1">
+      <div class="col-md-2">
         <label class="form-label">Lulusan</label>
-        <input type="number" min="0" class="form-control form-control-sm k_lulusan" value="${kelas?.lulusan ?? 0}">
+        <div class="input-group input-group-sm">
+          <input type="number" min="0" class="form-control form-control-sm k_lulusan" value="${kelas?.lulusan ?? 0}">
+          <button type="button" class="btn btn-outline-secondary btn-upload-sertifikat" title="Isi otomatis dari file laporan sertifikat Moodle (hitung jumlah baris)"><i class="fa-solid fa-file-arrow-up"></i></button>
+        </div>
+        <input type="file" accept=".csv" class="d-none sertifikat-file-input">
       </div>
       <div class="col-md-1 d-flex align-items-end">
         <button type="button" class="btn btn-sm btn-soft-danger w-100" onclick="document.getElementById('${rowId}').remove()"><i class="fa-solid fa-trash"></i></button>
       </div>
+      <div class="col-md-6">
+        <label class="form-label">Bidang Keterampilan</label>
+        <select class="form-select form-select-sm k_bidang">${bidangOptions}${bidangLegacy}</select>
+      </div>
     </div>`;
   wrap.appendChild(div);
+
+  const btnUpload = div.querySelector(".btn-upload-sertifikat");
+  const fileInput = div.querySelector(".sertifikat-file-input");
+  const lulusanInput = div.querySelector(".k_lulusan");
+  btnUpload.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    countCsvRows(file, (err, count) => {
+      if (err) return toast("Gagal membaca file: " + err.message, "danger");
+      lulusanInput.value = count;
+      toast(`${count} baris terdeteksi dari file sertifikat, angka Lulusan diperbarui. Jangan lupa klik Simpan.`, "success");
+    });
+    e.target.value = "";
+  });
 }
 
 function statusFromCounts(peserta) {
@@ -259,7 +289,6 @@ async function handleSaveLkp(e) {
       provinsi: document.getElementById("f_provinsi").value.trim(),
       kab_kota: document.getElementById("f_kab_kota").value.trim(),
       alamat: document.getElementById("f_alamat").value.trim(),
-      program_keterampilan: document.getElementById("f_program").value.trim(),
       tahun_bimtek,
       status_bimtek: tahun_bimtek.length ? "Sudah Bimtek" : "Belum Bimtek",
     };
@@ -272,6 +301,7 @@ async function handleSaveLkp(e) {
         link: row.querySelector(".k_link").value.trim(),
         peserta,
         lulusan: Number(row.querySelector(".k_lulusan").value) || 0,
+        program_keterampilan: row.querySelector(".k_bidang").value,
         status: statusFromCounts(peserta),
       };
     }).filter((k) => k.nama_kelas);

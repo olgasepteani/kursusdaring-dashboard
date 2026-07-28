@@ -239,7 +239,6 @@ function renderDetailContent(r) {
         <h3 class="text-white mb-1">${escapeHtml(r.nama_lkp)}</h3>
         <div style="font-size:.85rem;opacity:.9;"><i class="fa-solid fa-location-dot me-1"></i>${escapeHtml(r.kab_kota)}, ${escapeHtml(r.provinsi)}</div>
         <div class="detail-meta">
-          <div><div class="k">Program Keterampilan</div><div>${escapeHtml(r.program_keterampilan || "-")}</div></div>
           <div><div class="k">Status Bimtek</div><div>${statusBimtekBadge(r)}</div></div>
           <div><div class="k">Jumlah Kelas</div><div>${r.jumlah_kelas}</div></div>
           <div><div class="k">Peserta / Lulusan</div><div>${r.jumlah_peserta} / ${r.jumlah_lulusan}</div></div>

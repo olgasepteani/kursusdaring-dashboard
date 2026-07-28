@@ -425,7 +425,6 @@ function importMoodleCsv(payload, username) {
     const course = { id: rec.courseId, fullname: rec.namaKelas };
     const bidang = rec.bidang || "";
     upsertKelasFromMoodle(kelasSheet, lkpId, course, Number(rec.peserta) || 0, Number(rec.lulusan) || 0, null, bidang);
-    if (bidang) fillLkpProgramKeterampilanIfBlank(lkpSheet, lkpId, bidang);
     berhasil++;
   });
 
@@ -718,7 +717,6 @@ function syncFromMoodle() {
       const lulus = 0;
 
       upsertKelasFromMoodle(kelasSheet, lkpId, course, students.length, lulus, null, bidang);
-      if (bidang) fillLkpProgramKeterampilanIfBlank(lkpSheet, lkpId, bidang);
       totalKelas++;
       totalPeserta += students.length;
       totalLulusan += lulus;
@@ -753,21 +751,6 @@ function getCourseCustomFieldValue(course, shortname) {
   if (!field) return "";
   // "value" biasanya sudah berupa teks tampilan (mis. label dropdown yang dipilih)
   return String(field.value || field.valueraw || "").trim();
-}
-
-/** Isi program_keterampilan di level LKP HANYA jika masih kosong — supaya tidak
- *  menimpa data yang sudah diisi manual/dari Excel sebelumnya. Kalau kelas-kelas
- *  dalam 1 LKP punya bidang keterampilan berbeda-beda, nilai LKP-level hanya
- *  memakai yang pertama ditemukan (untuk kebutuhan filter/grafik ringkas);
- *  rincian per kelas tetap akurat tersimpan di sheet Kelas. */
-function fillLkpProgramKeterampilanIfBlank(lkpSheet, lkpId, bidang) {
-  const row = findRowIndexById(lkpSheet, lkpId);
-  if (row === -1) return;
-  const headers = lkpSheet.getRange(1, 1, 1, lkpSheet.getLastColumn()).getValues()[0];
-  const col = headers.indexOf("program_keterampilan") + 1;
-  if (col === 0) return;
-  const current = lkpSheet.getRange(row, col).getValue();
-  if (!current) lkpSheet.getRange(row, col).setValue(bidang);
 }
 
 /** Cari cmid aktivitas Custom Certificate dalam 1 course; null bila tidak ada */

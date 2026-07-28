@@ -70,7 +70,15 @@ function renderProvinsiChart(data) {
 }
 
 function renderProgramChart(data) {
-  const map = countBy(data, (d) => d.program_keterampilan);
+  // Hitung per KELAS (bukan per LKP) — bidang keterampilan sekarang murni
+  // atribut milik kelas, diisi dari sinkronisasi Moodle / import CSV.
+  const map = new Map();
+  data.forEach((lkp) => {
+    (lkp.kelas || []).forEach((k) => {
+      const bidang = k.program_keterampilan || "Belum Ditentukan";
+      map.set(bidang, (map.get(bidang) || 0) + 1);
+    });
+  });
   const top = topN(map, 8);
   const ctx = document.getElementById("chartProgram");
   if (!ctx) return;

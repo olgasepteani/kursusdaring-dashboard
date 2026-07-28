@@ -79,6 +79,25 @@ function parseMoodleReportCsv(file, onDone) {
   reader.readAsText(file);
 }
 
+/** Menghitung jumlah baris data (bukan header) pada file CSV — dipakai untuk
+ *  laporan penerima sertifikat Custom Certificate Moodle, yang formatnya
+ *  1 baris = 1 penerima, tanpa info kelas/NPSN (jadi cukup dihitung jumlah
+ *  barisnya saja untuk dijadikan angka "Lulusan"). */
+function countCsvRows(file, onDone) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: "string" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      onDone(null, rows.length);
+    } catch (err) {
+      onDone(err, null);
+    }
+  };
+  reader.readAsText(file);
+}
+
 function importFromExcel(file, onDone) {
   const reader = new FileReader();
   reader.onload = (e) => {
