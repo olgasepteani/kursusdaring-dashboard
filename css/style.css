@@ -292,3 +292,19 @@ table.dataTable tbody tr:hover{ background: var(--primary-light) !important; }
   .navbar-top .search-box{ width:180px; }
   .filter-grid{ grid-template-columns:repeat(2,1fr); }
 }
+/* ==========================================================================
+   Perbaikan: pastikan modal panjang (Edit Data LKP, dsb.) selalu bisa di-scroll
+   ========================================================================== */
+.modal-dialog-scrollable {
+  max-height: calc(100vh - 3.5rem);
+}
+.modal-dialog-scrollable .modal-content {
+  max-height: calc(100vh - 3.5rem);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.modal-dialog-scrollable .modal-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
