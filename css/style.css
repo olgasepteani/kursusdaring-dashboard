@@ -293,18 +293,21 @@ table.dataTable tbody tr:hover{ background: var(--primary-light) !important; }
   .filter-grid{ grid-template-columns:repeat(2,1fr); }
 }
 /* ==========================================================================
-   Perbaikan: pastikan modal panjang (Edit Data LKP, dsb.) selalu bisa di-scroll
+   Perbaikan modal scroll — form pembungkus modal-header/body/footer perlu
+   ikut jadi flex container, tidak cukup cuma modal-content saja
    ========================================================================== */
-.modal-dialog-scrollable {
-  max-height: calc(100vh - 3.5rem);
-}
 .modal-dialog-scrollable .modal-content {
   max-height: calc(100vh - 3.5rem);
   overflow: hidden;
+}
+.modal-dialog-scrollable .modal-content > form {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 .modal-dialog-scrollable .modal-body {
   overflow-y: auto;
   flex: 1 1 auto;
+  min-height: 0;
 }
