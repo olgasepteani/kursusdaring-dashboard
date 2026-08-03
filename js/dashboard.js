@@ -108,6 +108,7 @@ function renderStatCards(data) {
   const nLulusan = data.reduce((s, d) => s + (d.jumlah_lulusan || 0), 0);
   const sudahBimtek = data.filter((d) => d.status_bimtek === "Sudah Bimtek").length;
   const belumBimtek = nLkp - sudahBimtek;
+  const lkpDiMoodle = data.filter((d) => d.status_moodle === "Ya").length;
   let kelasBerjalan = 0,
     kelasBelumLengkap = 0;
   data.forEach((d) => (d.kelas || []).forEach((k) => {
@@ -120,6 +121,7 @@ function renderStatCards(data) {
     { icon: "fa-map-location-dot", cls: "bg-cyan", label: "Jumlah Provinsi", value: provinsiSet.size },
     { icon: "fa-city", cls: "bg-purple", label: "Jumlah Kab/Kota", value: kabSet.size },
     { icon: "fa-chalkboard", cls: "bg-yellow", label: "Jumlah Kelas", value: nKelas },
+    { icon: "fa-graduation-cap", cls: "bg-purple", label: "LKP di Kursus Daring (Moodle)", value: lkpDiMoodle },
     { icon: "fa-users", cls: "bg-blue", label: "Jumlah Peserta", value: nPeserta },
     { icon: "fa-user-graduate", cls: "bg-green", label: "Jumlah Lulusan", value: nLulusan },
     { icon: "fa-circle-check", cls: "bg-green", label: "Sudah Bimtek", value: sudahBimtek },
