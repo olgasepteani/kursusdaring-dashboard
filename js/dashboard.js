@@ -101,14 +101,18 @@ function runFilterAndRender(skipUrl) {
 /* ---------------------------------------------------------------------- */
 function renderStatCards(data) {
   const nLkp = data.length;
-  const provinsiSet = new Set(data.map((d) => d.provinsi).filter(Boolean));
-  const kabSet = new Set(data.map((d) => d.kab_kota).filter(Boolean));
+  const dataDiMoodle = data.filter((d) => d.status_moodle === "Ya");
+  // Provinsi & Kab/Kota dihitung dari LKP yang sudah terhubung Moodle saja —
+  // supaya mencerminkan cakupan wilayah yang benar-benar aktif di Kursus Daring,
+  // bukan cakupan seluruh database identitas (Dapodik).
+  const provinsiSet = new Set(dataDiMoodle.map((d) => d.provinsi).filter(Boolean));
+  const kabSet = new Set(dataDiMoodle.map((d) => d.kab_kota).filter(Boolean));
   const nKelas = data.reduce((s, d) => s + (d.jumlah_kelas || 0), 0);
   const nPeserta = data.reduce((s, d) => s + (d.jumlah_peserta || 0), 0);
   const nLulusan = data.reduce((s, d) => s + (d.jumlah_lulusan || 0), 0);
   const sudahBimtek = data.filter((d) => d.status_bimtek === "Sudah Bimtek").length;
   const belumBimtek = nLkp - sudahBimtek;
-  const lkpDiMoodle = data.filter((d) => d.status_moodle === "Ya").length;
+  const lkpDiMoodle = dataDiMoodle.length;
   let kelasBerjalan = 0,
     kelasBelumLengkap = 0;
   data.forEach((d) => (d.kelas || []).forEach((k) => {
@@ -117,14 +121,14 @@ function renderStatCards(data) {
   }));
 
   const cards = [
-    { icon: "fa-building-columns", cls: "bg-blue", label: "Jumlah LKP", value: nLkp },
+    { icon: "fa-building-columns", cls: "bg-blue", label: "Jumlah Total LKP (Dapodik)", value: nLkp },
     { icon: "fa-map-location-dot", cls: "bg-cyan", label: "Jumlah Provinsi", value: provinsiSet.size },
     { icon: "fa-city", cls: "bg-purple", label: "Jumlah Kab/Kota", value: kabSet.size },
     { icon: "fa-chalkboard", cls: "bg-yellow", label: "Jumlah Kelas", value: nKelas },
     { icon: "fa-graduation-cap", cls: "bg-purple", label: "LKP di Kursus Daring (Moodle)", value: lkpDiMoodle },
     { icon: "fa-users", cls: "bg-blue", label: "Jumlah Peserta", value: nPeserta },
     { icon: "fa-user-graduate", cls: "bg-green", label: "Jumlah Lulusan", value: nLulusan },
-    { icon: "fa-circle-check", cls: "bg-green", label: "Sudah Bimtek", value: sudahBimtek },
+    { icon: "fa-circle-check", cls: "bg-green", label: "Sudah Bimtek (2025-2026)", value: sudahBimtek },
     { icon: "fa-circle-exclamation", cls: "bg-red", label: "Belum Bimtek", value: belumBimtek },
     { icon: "fa-play", cls: "bg-cyan", label: "Kelas Berjalan", value: kelasBerjalan },
     { icon: "fa-triangle-exclamation", cls: "bg-yellow", label: "Kelas Belum Lengkap", value: kelasBelumLengkap },

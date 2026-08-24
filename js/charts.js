@@ -57,7 +57,10 @@ const baseOpts = () => ({
 });
 
 function renderProvinsiChart(data) {
-  const map = countBy(data, (d) => d.provinsi);
+  // Hanya LKP yang sudah terhubung ke Moodle (status_moodle = "Ya") —
+  // ini merepresentasikan LKP yang benar-benar aktif di Kursus Daring,
+  // bukan seluruh LKP terdaftar di Dapodik.
+  const map = countBy(data.filter((d) => d.status_moodle === "Ya"), (d) => d.provinsi);
   const top = topN(map, 12);
   const ctx = document.getElementById("chartProvinsi");
   if (!ctx) return;
@@ -143,13 +146,14 @@ function renderPesertaLulusanChart(data) {
 }
 
 function renderTopProvinsiChart(data) {
-  const map = countBy(data, (d) => d.provinsi);
+  // Sama seperti chart Provinsi di atas — hanya LKP yang aktif di Kursus Daring (Moodle)
+  const map = countBy(data.filter((d) => d.status_moodle === "Ya"), (d) => d.provinsi);
   const top = topN(map, 10);
   renderHtmlBarList("listTopProvinsi", top);
 }
 
 function renderTopKabChart(data) {
-  const map = countBy(data, (d) => d.kab_kota);
+  const map = countBy(data.filter((d) => d.status_moodle === "Ya"), (d) => d.kab_kota);
   const top = topN(map, 10);
   renderHtmlBarList("listTopKab", top);
 }

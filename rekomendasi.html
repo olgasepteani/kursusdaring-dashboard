@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rekomendasi — Dashboard Kursus Daring LKP</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="spinnerOverlay" class="spinner-overlay">
+  <div class="spinner-border" style="color:#fff;width:3rem;height:3rem;" role="status"></div>
+</div>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="mark">LK</div>
+      <div>
+        <div class="name">Kursus Daring LKP</div>
+        <div class="sub">Direktorat Kursus &amp; Pelatihan</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Menu Utama</div>
+      <a href="index.html"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+      <a href="laporan.html"><i class="fa-solid fa-file-lines"></i> Laporan</a>
+      <a href="rekomendasi.html" class="active"><i class="fa-solid fa-lightbulb"></i> Rekomendasi</a>
+      <div class="nav-label">Pengelolaan</div>
+      <a href="admin.html"><i class="fa-solid fa-user-shield"></i> Admin Panel</a>
+      <a href="integrasi.html"><i class="fa-solid fa-plug"></i> Integrasi Backend</a>
+    </nav>
+    <div class="sidebar-foot">Platform Kursus Daring &copy; 2026<br>v1.0.0</div>
+  </aside>
+
+  <div class="main-col">
+    <header class="navbar-top">
+      <div class="d-flex align-items-center gap-2">
+        <button class="icon-btn" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
+        <h5 class="mb-0">Rekomendasi</h5>
+      </div>
+      <div class="navbar-actions">
+        <span id="apiModeBadge" class="badge-status b-yellow"></span>
+        <button class="icon-btn" id="btnApiSettings" title="Pengaturan Koneksi"><i class="fa-solid fa-plug-circle-bolt"></i></button>
+        <button class="icon-btn" id="themeToggle"><i class="fa-solid fa-moon"></i></button>
+      </div>
+    </header>
+
+    <div class="breadcrumb-bar">
+      <a href="index.html">Beranda</a> <span class="mx-1">/</span> <span class="current">Rekomendasi</span>
+    </div>
+
+    <div class="page-wrap">
+      <div id="demoBanner" class="alert alert-warning d-none d-flex align-items-center gap-2 mt-3" role="alert" style="border-radius:12px;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div><strong>Mode Demo</strong> — rekomendasi di bawah dihitung dari data contoh, bukan data Anda yang sebenarnya.</div>
+      </div>
+
+      <div class="page-head">
+        <div>
+          <h1>Rekomendasi Otomatis Berbasis Data</h1>
+          <p>Setiap insight di bawah dihitung langsung dari data LKP &amp; kelas yang sedang aktif — <strong>bukan</strong> ditulis oleh AI generatif, jadi setiap angka bisa ditelusuri sumbernya.</p>
+        </div>
+      </div>
+
+      <div class="alert alert-light border d-flex align-items-center gap-2 mb-3" style="border-radius:12px;font-size:.83rem;">
+        <i class="fa-solid fa-circle-info text-muted"></i>
+        <div class="text-muted">Diperbarui otomatis setiap halaman ini dibuka. Terakhir dihitung: <strong id="lastUpdated">—</strong></div>
+      </div>
+
+      <div class="insight-grid" id="insightGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- API Settings Modal -->
+<div class="modal fade" id="apiSettingsModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-plug-circle-bolt me-2" style="color:var(--primary)"></i>Pengaturan Koneksi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted" style="font-size:.84rem;">Tempel URL Web App Google Apps Script Anda di sini agar dashboard membaca &amp; menulis langsung ke Google Spreadsheet. Kosongkan untuk kembali ke Mode Demo (data contoh lokal).</p>
+        <label class="form-label">URL Web App Apps Script</label>
+        <input id="apiUrlInput" type="url" class="form-control mb-2" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+        <div class="d-flex gap-2 mb-2">
+          <button id="btnTestApiUrl" type="button" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-satellite-dish me-1"></i>Tes Koneksi</button>
+          <button id="btnUseDemoMode" type="button" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-hard-drive me-1"></i>Gunakan Mode Demo</button>
+        </div>
+        <div id="apiSettingsStatus" style="font-size:.82rem;min-height:1.2em;"></div>
+        <hr>
+        <p class="text-muted mb-1" style="font-size:.78rem;">Sedang di Mode Demo? Anda bisa mengembalikan data contoh ke kondisi awal:</p>
+        <button id="btnResetDemoData" type="button" class="btn btn-soft-danger btn-sm"><i class="fa-solid fa-rotate-left me-1"></i>Reset Data Demo</button>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button id="btnSaveApiUrl" type="button" class="btn btn-primary">Simpan &amp; Muat Ulang</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="js/common.js"></script>
+<script src="js/api.js"></script>
+<script src="js/rekomendasi.js"></script>
+</body>
+</html>
