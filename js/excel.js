@@ -79,6 +79,46 @@ function parseMoodleReportCsv(file, onDone) {
   reader.readAsText(file);
 }
 
+/** Membaca file laporan "Certificate Issued" (hasil query SQL Configurable
+ *  Reports Moodle, JOIN ke tabel customcert_issues). Format 1 baris = 1 course
+ *  (sudah teragregasi dari sisi Moodle, bukan 1 baris per peserta seperti
+ *  laporan Participants). Kolom wajib: "course_id", "course_name", "npsn",
+ *  "peserta_issued_certificate" — kolom "jumlah_peserta" opsional (dipakai
+ *  hanya kalau kelasnya belum pernah tersinkron sama sekali sebelumnya). */
+function parseCertificateReportCsv(file, onDone) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: "string" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+      const required = ["course_id", "course_name", "npsn", "peserta_issued_certificate"];
+      const cols = Object.keys(rows[0] || {});
+      const missing = required.filter((c) => !cols.includes(c));
+      if (missing.length) {
+        onDone(new Error(`Kolom berikut tidak ditemukan di file: ${missing.join(", ")}. Pastikan ini file hasil query SQL Certificate Issued.`), null);
+        return;
+      }
+
+      const records = rows
+        .map((row) => ({
+          npsn: String(row["npsn"] || "").trim(),
+          courseId: String(row["course_id"] || "").trim(),
+          namaKelas: String(row["course_name"] || "").trim(),
+          pesertaLaporan: Number(row["jumlah_peserta"]) || 0,
+          lulusan: Number(row["peserta_issued_certificate"]) || 0,
+        }))
+        .filter((r) => r.npsn && r.courseId);
+
+      onDone(null, records);
+    } catch (err) {
+      onDone(err, null);
+    }
+  };
+  reader.readAsText(file);
+}
+
 /** Menghitung jumlah baris data (bukan header) pada file CSV — dipakai untuk
  *  laporan penerima sertifikat Custom Certificate Moodle, yang formatnya
  *  1 baris = 1 penerima, tanpa info kelas/NPSN (jadi cukup dihitung jumlah

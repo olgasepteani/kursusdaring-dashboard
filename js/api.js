@@ -111,6 +111,9 @@ const Api = {
   async importMoodleCsv(records) {
     return apiPost("importMoodleCsv", { records });
   },
+  async importCertificateReport(records) {
+    return apiPost("importCertificateReport", { records });
+  },
 };
 
 /* ==========================================================================
@@ -280,6 +283,29 @@ const demoStore = (() => {
           berhasil++;
         });
         return { total_baris: (payload.records || []).length, berhasil, npsn_tidak_cocok: tidakCocok.size, contoh_npsn_tidak_cocok: [...tidakCocok].slice(0, 15) };
+      }
+      if (action === "importCertificateReport") {
+        const npsnToRec = {};
+        data.forEach((r) => { if (r.npsn) npsnToRec[String(r.npsn).trim()] = r; });
+        let diperbarui = 0;
+        let dibuatBaru = 0;
+        const tidakCocok = new Set();
+        (payload.records || []).forEach((rec) => {
+          const rec0 = npsnToRec[String(rec.npsn || "").trim()];
+          if (!rec0) { if (rec.npsn) tidakCocok.add(rec.npsn); return; }
+          const kelasId = "K-MOODLE-" + rec.courseId;
+          let k = rec0.kelas.find((x) => x.id === kelasId);
+          if (k) {
+            k.lulusan = Number(rec.lulusan) || 0;
+            diperbarui++;
+          } else {
+            k = { id: kelasId, nama_kelas: rec.namaKelas, link: "", peserta: Number(rec.pesertaLaporan) || 0, lulusan: Number(rec.lulusan) || 0, status: (Number(rec.pesertaLaporan) || 0) > 0 ? "Sudah Berjalan" : "Materi Belum Lengkap" };
+            rec0.kelas.push(k);
+            dibuatBaru++;
+          }
+          recalc(rec0);
+        });
+        return { total_baris: (payload.records || []).length, diperbarui, dibuat_baru: dibuatBaru, npsn_tidak_cocok: tidakCocok.size, contoh_npsn_tidak_cocok: [...tidakCocok].slice(0, 15) };
       }
       throw new Error("Aksi tidak dikenal: " + action);
     },

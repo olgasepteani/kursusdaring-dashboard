@@ -182,6 +182,39 @@ function wireAdminUi() {
     });
     e.target.value = "";
   });
+
+  document.getElementById("btnImportCertReport")?.addEventListener("click", () => document.getElementById("importCertReportInput").click());
+  document.getElementById("importCertReportInput")?.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    parseCertificateReportCsv(file, async (err, records) => {
+      if (err) return toast("Gagal membaca file CSV: " + err.message, "danger");
+      if (!records.length) return toast("Tidak ada baris kelas valid ditemukan pada file.", "warning");
+      const totalLulusan = records.reduce((s, r) => s + r.lulusan, 0);
+      Swal.fire({
+        title: `Perbarui data Lulusan untuk ${records.length} kelas?`,
+        html: `Total ${totalLulusan} sertifikat terbit akan diisi ke kolom Lulusan.<br><strong>Kolom Peserta TIDAK ikut ditimpa</strong> — hanya kelas yang belum pernah tersinkron sama sekali yang akan dibuat baru memakai data peserta dari laporan ini.<br>Kelas dengan NPSN tidak dikenal akan dilewati.`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Ya, perbarui",
+        cancelButtonText: "Batal",
+        confirmButtonColor: "#004AAD",
+      }).then(async (res) => {
+        if (!res.isConfirmed) return;
+        try {
+          const result = await Api.importCertificateReport(records);
+          let msg = `${result.diperbarui} kelas diperbarui, ${result.dibuat_baru} kelas baru dibuat.`;
+          if (result.npsn_tidak_cocok > 0) msg += ` ${result.npsn_tidak_cocok} NPSN tidak dikenal (dilewati).`;
+          toast(msg, result.npsn_tidak_cocok > 0 ? "warning" : "success");
+          ADMIN_DATA = await Api.getAllLkp();
+          reloadAdminTable(ADMIN_DATA);
+        } catch (e2) {
+          toast("Gagal mengimpor: " + e2.message, "danger");
+        }
+      });
+    });
+    e.target.value = "";
+  });
 }
 
 /* ==========================================================================

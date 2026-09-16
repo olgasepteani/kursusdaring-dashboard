@@ -261,6 +261,8 @@ function doPost(e) {
       data = importBulk(payload, username);
     } else if (action === "importMoodleCsv") {
       data = importMoodleCsv(payload, username);
+    } else if (action === "importCertificateReport") {
+      data = importCertificateReport(payload, username);
     } else {
       throw new Error("Aksi tidak dikenal: " + action);
     }
@@ -430,6 +432,63 @@ function importMoodleCsv(payload, username) {
 
   const ringkasan = { total_baris: records.length, berhasil, npsn_tidak_cocok: npsnTidakCocok.size, contoh_npsn_tidak_cocok: [...npsnTidakCocok].slice(0, 15) };
   logAction(username, "importMoodleCsv", ringkasan);
+  return ringkasan;
+}
+
+/* ==========================================================================
+   Import laporan Certificate Issued (dari Configurable Reports + SQL Moodle,
+   JOIN ke tabel customcert_issues) — sumber lulusan yang SUNGGUHAN, bukan
+   proksi completion lagi. Format record dari frontend:
+   { npsn, courseId, namaKelas, pesertaLaporan, lulusan }
+
+   PENTING — beda dari importMoodleCsv: fungsi ini HANYA menimpa kolom
+   "lulusan" pada kelas yang SUDAH ADA (id "K-MOODLE-{courseId}"), supaya
+   tidak menimpa "peserta" yang sudah tersinkron dari laporan Participants
+   (sumber peserta yang lebih dipercaya / konsisten dengan sync API).
+   Kalau kelasnya belum pernah ada sama sekali di sheet Kelas, baru dibuat
+   baris baru memakai peserta dari laporan ini (karena tidak ada sumber lain).
+   ========================================================================== */
+function importCertificateReport(payload, username) {
+  const lkpSheet = getOrCreateSheet(SHEET_LKP, []);
+  const kelasSheet = getOrCreateSheet(SHEET_KELAS, []);
+  const existingLkp = sheetToObjects(lkpSheet);
+  const npsnToId = {};
+  existingLkp.forEach((r) => {
+    const npsn = String(r.npsn || "").trim();
+    if (npsn) npsnToId[npsn] = r.id;
+  });
+
+  const headers = kelasSheet.getRange(1, 1, 1, kelasSheet.getLastColumn()).getValues()[0];
+  const lulusanCol = headers.indexOf("lulusan") + 1;
+
+  const records = payload.records || [];
+  let diperbarui = 0;
+  let dibuatBaru = 0;
+  const npsnTidakCocok = new Set();
+
+  records.forEach((rec) => {
+    const npsn = String(rec.npsn || "").trim();
+    const lkpId = npsnToId[npsn];
+    if (!lkpId) {
+      if (npsn) npsnTidakCocok.add(npsn);
+      return;
+    }
+    const kelasId = "K-MOODLE-" + rec.courseId;
+    const row = findRowIndexById(kelasSheet, kelasId);
+    if (row !== -1) {
+      // Kelas sudah ada — timpa HANYA kolom lulusan, biarkan peserta/status/link apa adanya
+      kelasSheet.getRange(row, lulusanCol).setValue(Number(rec.lulusan) || 0);
+      diperbarui++;
+    } else {
+      // Belum pernah tersinkron sama sekali — buat baru pakai data seadanya dari laporan ini
+      const course = { id: rec.courseId, fullname: rec.namaKelas };
+      upsertKelasFromMoodle(kelasSheet, lkpId, course, Number(rec.pesertaLaporan) || 0, Number(rec.lulusan) || 0, null, "");
+      dibuatBaru++;
+    }
+  });
+
+  const ringkasan = { total_baris: records.length, diperbarui, dibuat_baru: dibuatBaru, npsn_tidak_cocok: npsnTidakCocok.size, contoh_npsn_tidak_cocok: [...npsnTidakCocok].slice(0, 15) };
+  logAction(username, "importCertificateReport", ringkasan);
   return ringkasan;
 }
 
