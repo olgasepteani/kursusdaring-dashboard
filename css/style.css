@@ -260,6 +260,27 @@ table.dataTable tbody tr:hover{ background: var(--primary-light) !important; }
 
 /* Modal / detail */
 .modal-content{ background: var(--surface); border-radius: var(--radius); border:1px solid var(--border); color:var(--text); }
+
+/* Perbaikan: modal panjang (Edit Data LKP, dsb.) dibungkus <form> di dalam
+   .modal-content, sehingga rantai flex/scroll bawaan Bootstrap
+   (.modal-dialog-scrollable) tidak "menembus" ke modal-header/body/footer.
+   Jadikan <form> itu sendiri flex container supaya modal-body-nya yang
+   scroll, bukan seluruh modal jadi kepanjangan sampai keluar layar. */
+.modal-dialog-scrollable .modal-content {
+  max-height: calc(100vh - 3.5rem);
+  overflow: hidden;
+}
+.modal-dialog-scrollable .modal-content > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.modal-dialog-scrollable .modal-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .detail-hero{
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color:#fff; border-radius: 12px; padding:1.4rem; margin-bottom:1rem; position:relative; overflow:hidden;
