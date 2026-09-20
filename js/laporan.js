@@ -236,8 +236,6 @@ function chartBox(canvasId, height = 300) {
 
 function renderReportPreview(report) {
   const el = document.getElementById("reportPreview");
-  const DETAIL_CAP = 100;
-  const detailRows = report.detailRows.slice(0, DETAIL_CAP);
   const bimtekLabel = report.tahunFilter ? `LKP Dibimtek — Tahun ${escapeHtml(report.tahunFilter)}` : "LKP Dibimtek per Tahun";
 
   el.innerHTML = `
@@ -273,14 +271,6 @@ function renderReportPreview(report) {
       <thead><tr><th>Nama LKP</th><th>Provinsi</th><th>Jumlah Kelas</th><th>Jumlah Peserta</th><th>Jumlah Lulusan</th></tr></thead>
       <tbody>
         ${report.top10Peserta.map((r) => `<tr><td>${escapeHtml(r.nama_lkp)}</td><td>${escapeHtml(r.provinsi || "-")}</td><td>${r.jumlah_kelas}</td><td>${r.jumlah_peserta}</td><td>${r.jumlah_lulusan}</td></tr>`).join("")}
-      </tbody>
-    </table>
-
-    <div class="report-section-title">Daftar LKP ${report.detailRows.length > DETAIL_CAP ? `(menampilkan ${DETAIL_CAP} dari ${report.detailRows.length} — unduh Excel untuk daftar lengkap)` : ""}</div>
-    <table class="report-table">
-      <thead><tr><th>Nama LKP</th><th>NPSN</th><th>Provinsi</th><th>Kab/Kota</th><th>Kelas</th><th>Peserta</th><th>Lulusan</th><th>Status Bimtek</th></tr></thead>
-      <tbody>
-        ${detailRows.map((r) => `<tr><td>${escapeHtml(r.nama_lkp)}</td><td>${escapeHtml(r.npsn)}</td><td>${escapeHtml(r.provinsi)}</td><td>${escapeHtml(r.kab_kota)}</td><td>${r.jumlah_kelas}</td><td>${r.jumlah_peserta}</td><td>${r.jumlah_lulusan}</td><td>${escapeHtml(r.status_bimtek)}</td></tr>`).join("")}
       </tbody>
     </table>
   `;
