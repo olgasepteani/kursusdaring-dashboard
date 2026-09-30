@@ -114,8 +114,12 @@ function generateReport() {
   const tahunFilter = document.getElementById("fltTahunBimtekSection")?.value || "";
   const bimtekBreakdown = computeBimtekBreakdown(dataForReport, tahunFilter);
   const top10Peserta = [...dataForReport].sort((a, b) => (b.jumlah_peserta || 0) - (a.jumlah_peserta || 0)).slice(0, 10);
+  // Daftar LKP yang sudah terdaftar/tersinkron di Moodle (status_moodle = "Ya") —
+  // otomatis mengikuti data: bertambah sendiri begitu kategori baru di Moodle
+  // berhasil disinkronkan, tidak perlu disunting manual di sini.
+  const lkpDiMoodleList = dataForReport.filter((r) => r.status_moodle === "Ya").sort((a, b) => (b.jumlah_peserta || 0) - (a.jumlah_peserta || 0));
 
-  LAST_REPORT = { title, sub, summary, breakdownTitle, breakdown, bidangBreakdown, kabKotaTop20, bimtekBreakdown, tahunFilter, top10Peserta, detailRows: dataForReport };
+  LAST_REPORT = { title, sub, summary, breakdownTitle, breakdown, bidangBreakdown, kabKotaTop20, bimtekBreakdown, tahunFilter, top10Peserta, lkpDiMoodleList, detailRows: dataForReport };
   renderReportPreview(LAST_REPORT);
   renderReportCharts(LAST_REPORT);
 }
@@ -273,6 +277,14 @@ function renderReportPreview(report) {
         ${report.top10Peserta.map((r) => `<tr><td>${escapeHtml(r.nama_lkp)}</td><td>${escapeHtml(r.provinsi || "-")}</td><td>${r.jumlah_kelas}</td><td>${r.jumlah_peserta}</td><td>${r.jumlah_lulusan}</td></tr>`).join("")}
       </tbody>
     </table>
+
+    <div class="report-section-title">Daftar LKP Terdaftar di Moodle (${report.lkpDiMoodleList.length} LKP, terurut peserta terbanyak)</div>
+    <table class="report-table">
+      <thead><tr><th>Nama LKP</th><th>NPSN</th><th>Provinsi</th><th>Kab/Kota</th><th>Kelas</th><th>Peserta</th><th>Lulusan</th><th>Status Bimtek</th></tr></thead>
+      <tbody>
+        ${report.lkpDiMoodleList.map((r) => `<tr><td>${escapeHtml(r.nama_lkp)}</td><td>${escapeHtml(r.npsn)}</td><td>${escapeHtml(r.provinsi)}</td><td>${escapeHtml(r.kab_kota)}</td><td>${r.jumlah_kelas}</td><td>${r.jumlah_peserta}</td><td>${r.jumlah_lulusan}</td><td>${escapeHtml(r.status_bimtek)}</td></tr>`).join("")}
+      </tbody>
+    </table>
   `;
 }
 
@@ -355,6 +367,20 @@ function exportReportToExcel() {
     LAST_REPORT.top10Peserta.map((r) => ({ "Nama LKP": r.nama_lkp, Provinsi: r.provinsi, "Jumlah Kelas": r.jumlah_kelas, "Jumlah Peserta": r.jumlah_peserta, "Jumlah Lulusan": r.jumlah_lulusan }))
   );
   XLSX.utils.book_append_sheet(wb, wsTop10, "Top 10 Peserta");
+
+  const wsLkpMoodle = XLSX.utils.json_to_sheet(
+    LAST_REPORT.lkpDiMoodleList.map((r) => ({
+      "Nama LKP": r.nama_lkp,
+      NPSN: r.npsn,
+      Provinsi: r.provinsi,
+      "Kab/Kota": r.kab_kota,
+      "Jumlah Kelas": r.jumlah_kelas,
+      "Jumlah Peserta": r.jumlah_peserta,
+      "Jumlah Lulusan": r.jumlah_lulusan,
+      "Status Bimtek": r.status_bimtek,
+    }))
+  );
+  XLSX.utils.book_append_sheet(wb, wsLkpMoodle, "LKP di Moodle");
 
   const wsDetail = XLSX.utils.json_to_sheet(
     LAST_REPORT.detailRows.map((r) => ({
