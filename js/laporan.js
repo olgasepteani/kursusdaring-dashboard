@@ -118,8 +118,10 @@ function generateReport() {
   // otomatis mengikuti data: bertambah sendiri begitu kategori baru di Moodle
   // berhasil disinkronkan, tidak perlu disunting manual di sini.
   const lkpDiMoodleList = dataForReport.filter((r) => r.status_moodle === "Ya").sort((a, b) => (b.jumlah_peserta || 0) - (a.jumlah_peserta || 0));
+  // Khusus laporan Kustom: daftar LKP sesuai hasil filter, terurut peserta terbanyak.
+  const kustomList = type === "kustom" ? [...dataForReport].sort((a, b) => (b.jumlah_peserta || 0) - (a.jumlah_peserta || 0)) : null;
 
-  LAST_REPORT = { title, sub, summary, breakdownTitle, breakdown, bidangBreakdown, kabKotaTop20, bimtekBreakdown, tahunFilter, top10Peserta, lkpDiMoodleList, detailRows: dataForReport };
+  LAST_REPORT = { title, sub, summary, breakdownTitle, breakdown, bidangBreakdown, kabKotaTop20, bimtekBreakdown, tahunFilter, top10Peserta, lkpDiMoodleList, kustomList, detailRows: dataForReport };
   renderReportPreview(LAST_REPORT);
   renderReportCharts(LAST_REPORT);
 }
@@ -278,14 +280,39 @@ function renderReportPreview(report) {
       </tbody>
     </table>
 
+    ${report.kustomList ? kustomListHtml(report.kustomList) : `
     <div class="report-section-title">Daftar LKP Terdaftar di Moodle (${report.lkpDiMoodleList.length} LKP, terurut peserta terbanyak)</div>
     <table class="report-table">
       <thead><tr><th>Nama LKP</th><th>NPSN</th><th>Provinsi</th><th>Kab/Kota</th><th>Kelas</th><th>Peserta</th><th>Lulusan</th><th>Status Bimtek</th></tr></thead>
       <tbody>
         ${report.lkpDiMoodleList.map((r) => `<tr><td>${escapeHtml(r.nama_lkp)}</td><td>${escapeHtml(r.npsn)}</td><td>${escapeHtml(r.provinsi)}</td><td>${escapeHtml(r.kab_kota)}</td><td>${r.jumlah_kelas}</td><td>${r.jumlah_peserta}</td><td>${r.jumlah_lulusan}</td><td>${escapeHtml(r.status_bimtek)}</td></tr>`).join("")}
       </tbody>
-    </table>
+    </table>`}
   `;
+}
+
+/** Daftar LKP hasil filter (khusus laporan Kustom). Di layar/cetak dibatasi
+ *  500 baris teratas (terurut peserta terbanyak) supaya halaman tidak berat
+ *  saat filter longgar mencakup belasan ribu LKP — daftar lengkap selalu ada
+ *  di sheet "Daftar LKP (Filter)" pada hasil Export Excel. */
+const KUSTOM_LIST_CAP = 500;
+function kustomListHtml(rows) {
+  const shown = rows.slice(0, KUSTOM_LIST_CAP);
+  const total = rows.length.toLocaleString("id-ID");
+  const note = rows.length > KUSTOM_LIST_CAP ? ` — menampilkan ${KUSTOM_LIST_CAP} teratas, unduh Excel untuk daftar lengkap` : "";
+  const body = shown.length
+    ? shown.map((r) => `<tr><td>${escapeHtml(r.nama_lkp)}</td><td>${escapeHtml(r.provinsi || "-")}</td><td>${r.jumlah_kelas || 0}</td><td>${r.jumlah_peserta || 0}</td><td>${r.jumlah_lulusan || 0}</td><td>${escapeHtml(r.status_bimtek || "-")}</td><td>${escapeHtml(tahunBimtekText(r))}</td></tr>`).join("")
+    : `<tr><td colspan="7" style="text-align:center;">Tidak ada LKP yang cocok dengan filter ini.</td></tr>`;
+  return `
+    <div class="report-section-title">Daftar LKP Hasil Filter (${total} LKP, terurut peserta terbanyak${note})</div>
+    <table class="report-table">
+      <thead><tr><th>Nama LKP</th><th>Provinsi</th><th>Jumlah Kelas</th><th>Jumlah Peserta</th><th>Jumlah Lulusan</th><th>Status Bimtek</th><th>Tahun Bimtek</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
+}
+
+function tahunBimtekText(r) {
+  return r.tahun_bimtek && r.tahun_bimtek.length ? r.tahun_bimtek.join(", ") : "-";
 }
 
 /* ==========================================================================
@@ -368,19 +395,35 @@ function exportReportToExcel() {
   );
   XLSX.utils.book_append_sheet(wb, wsTop10, "Top 10 Peserta");
 
-  const wsLkpMoodle = XLSX.utils.json_to_sheet(
-    LAST_REPORT.lkpDiMoodleList.map((r) => ({
-      "Nama LKP": r.nama_lkp,
-      NPSN: r.npsn,
-      Provinsi: r.provinsi,
-      "Kab/Kota": r.kab_kota,
-      "Jumlah Kelas": r.jumlah_kelas,
-      "Jumlah Peserta": r.jumlah_peserta,
-      "Jumlah Lulusan": r.jumlah_lulusan,
-      "Status Bimtek": r.status_bimtek,
-    }))
-  );
-  XLSX.utils.book_append_sheet(wb, wsLkpMoodle, "LKP di Moodle");
+  if (LAST_REPORT.kustomList) {
+    // Laporan Kustom: daftar LENGKAP hasil filter (tanpa batas 500 baris seperti di layar)
+    const wsKustom = XLSX.utils.json_to_sheet(
+      LAST_REPORT.kustomList.map((r) => ({
+        "Nama LKP": r.nama_lkp,
+        Provinsi: r.provinsi,
+        "Jumlah Kelas": r.jumlah_kelas || 0,
+        "Jumlah Peserta": r.jumlah_peserta || 0,
+        "Jumlah Lulusan": r.jumlah_lulusan || 0,
+        "Status Bimtek": r.status_bimtek,
+        "Tahun Bimtek": tahunBimtekText(r),
+      }))
+    );
+    XLSX.utils.book_append_sheet(wb, wsKustom, "Daftar LKP (Filter)");
+  } else {
+    const wsLkpMoodle = XLSX.utils.json_to_sheet(
+      LAST_REPORT.lkpDiMoodleList.map((r) => ({
+        "Nama LKP": r.nama_lkp,
+        NPSN: r.npsn,
+        Provinsi: r.provinsi,
+        "Kab/Kota": r.kab_kota,
+        "Jumlah Kelas": r.jumlah_kelas,
+        "Jumlah Peserta": r.jumlah_peserta,
+        "Jumlah Lulusan": r.jumlah_lulusan,
+        "Status Bimtek": r.status_bimtek,
+      }))
+    );
+    XLSX.utils.book_append_sheet(wb, wsLkpMoodle, "LKP di Moodle");
+  }
 
   const wsDetail = XLSX.utils.json_to_sheet(
     LAST_REPORT.detailRows.map((r) => ({
